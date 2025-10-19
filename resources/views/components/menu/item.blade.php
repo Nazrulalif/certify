@@ -5,22 +5,21 @@
     'icon' => '',
     'active' => false,
     'id' => '',
+    'activeRoute' => '',
 ])
 
 @php
     $link = $route ? route($route) : $url;
-    $isActive = $active ?: ($route && request()->routeIs($route));
+    $isActive = $active ?: $route && request()->routeIs($activeRoute);
 @endphp
 
 <div class="menu-item">
-    <a class="menu-link {{ $isActive ? 'active' : '' }}"
-        href="{{ $link }}"
-        {{ $id ? 'id=' . $id : '' }}
+    <a class="menu-link {{ $isActive ? 'active' : '' }}" href="{{ $link }}" {{ $id ? 'id=' . $id : '' }}
         {{ $attributes }}>
-        @if($icon)
+        @if ($icon)
             <span class="menu-icon">
                 <i class="{{ $icon }}">
-                    @if(str_contains($icon, 'ki-duotone'))
+                    @if (str_contains($icon, 'ki-duotone'))
                         <span class="path1"></span>
                         <span class="path2"></span>
                         <span class="path3"></span>

@@ -8,7 +8,7 @@
     </title>
     <meta charset="utf-8" />
     <meta name="robots" content="noindex, nofollow">
-    
+
     <!--begin::Header-->
     @include('layouts.partials.meta')
     <!--end::Header-->
@@ -18,6 +18,8 @@
     <link rel="shortcut icon" href="{{ asset(env('APP_FAVICON', 'assets/media/logos/favicon.ico')) }}" />
     <!--begin::Fonts(mandatory for all pages)-->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <!--end::Fonts-->
     <!--begin::Vendor Stylesheets(used for this page only)-->
     @stack('vendor-styles')
@@ -29,6 +31,13 @@
         type="text/css" />
     <!--end::Global Stylesheets Bundle-->
     @stack('styles')
+    <style>
+        .logo-font {
+            font-family: "Lilita One", sans-serif;
+            font-weight: 200;
+            font-style: normal;
+        }
+    </style>
     <script>
         // Frame-busting to prevent site from being loaded within a frame without permission (click-jacking) if (window.top != window.self) { window.top.location.replace(window.self.location.href); }
     </script>

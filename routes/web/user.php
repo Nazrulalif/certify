@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Web\App\UsersController;
+use Illuminate\Support\Facades\Route;
 
 // Authenticated Routes (only accessible when logged in)
 Route::middleware('auth')->group(function () {
@@ -15,6 +16,5 @@ Route::middleware('auth')->group(function () {
         Route::post('/bulk-destroy', [UsersController::class, 'bulk_destroy'])->name('destroy-bulk');
         Route::put('/{id}/deactive', [UsersController::class, 'deactive'])->name('deactive');
         Route::put('/{id}/reactive', [UsersController::class, 'reactive'])->name('reactive');
-
     });
 });

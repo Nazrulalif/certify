@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\App\DashboardController;
 use App\Http\Controllers\Web\App\GlobalSearchController;
+use Illuminate\Support\Facades\Route;
 
 // Include authentication routes
 require __DIR__ . '/auth.php';

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\Auth\LoginController;
 use App\Http\Controllers\Web\Auth\RegisterController;
+use Illuminate\Support\Facades\Route;
 
 // Guest Routes (only accessible when not logged in)
 Route::middleware('guest')->group(function () {

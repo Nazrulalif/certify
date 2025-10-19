@@ -5,8 +5,7 @@
 @section('page-title', 'Users Management')
 
 @section('breadcrumb')
-    <li class="breadcrumb-item text-muted">Users</li>
-    <li class="breadcrumb-item text-gray-900">All Users</li>
+    <li class="breadcrumb-item text-gray-900">Users</li>
 @endsection
 
 @section('content')

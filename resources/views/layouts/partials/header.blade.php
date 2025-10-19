@@ -48,8 +48,7 @@
                     <span class="path2"></span>
                 </i>
                 <input type="text" data-bs-toggle="modal" data-bs-target="#globalSearchModal"
-                    class="form-control bg-transparent ps-13 fs-7 h-40px" value=""
-                    placeholder="Quick Search"/>
+                    class="form-control bg-transparent ps-13 fs-7 h-40px" value="" placeholder="Quick Search" />
             </div>
             <!--end::Search-->
             <div class="d-flex d-sm-none align-items-center ms-3">
@@ -61,32 +60,6 @@
                     </i>
                 </div>
             </div>
-            <!--begin::Activities-->
-            <div class="d-flex align-items-center ms-3 ms-lg-4">
-                <div class="btn btn-icon btn-color-gray-700 btn-active-color-primary btn-outline w-40px h-40px"
-                    id="kt_activities_toggle">
-                    <i class="ki-duotone ki-notification-bing fs-1">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                        <span class="path3"></span>
-                    </i>
-                </div>
-            </div>
-            <!--end::Activities-->
-            <!--begin::Chat-->
-            <div class="d-flex align-items-center ms-3 ms-lg-4">
-                <div class="btn btn-icon btn-color-gray-700 btn-active-color-primary btn-outline w-40px h-40px position-relative"
-                    id="kt_drawer_chat_toggle">
-                    <i class="ki-duotone ki-message-text-2 fs-1">
-                        <span class="path1"></span>
-                        <span class="path2"></span>
-                        <span class="path3"></span>
-                    </i>
-                    <span
-                        class="bullet bullet-dot bg-success h-6px w-6px position-absolute translate-middle top-0 start-50 animation-blink"></span>
-                </div>
-            </div>
-            <!--end::Chat-->
             <!--begin::Theme mode-->
             <div class="d-flex align-items-center ms-3 ms-lg-4">
                 <a href="#"
@@ -160,6 +133,19 @@
                 <!--end::Menu-->
             </div>
             <!--end::Theme mode-->
+            <!--begin::Activities-->
+            <div class="d-flex align-items-center ms-3 ms-lg-4">
+                <a href="{{ route('logout') }}"
+                    class="btn btn-icon btn-color-gray-700 btn-active-color-primary btn-outline w-40px h-40px"
+                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();"
+                    data-bs-toggle="tooltip" data-bs-dismiss="click" title="Logout">
+                    <i class="ki-duotone ki-exit-right fs-1">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                </a>
+            </div>
+            <!--end::Activities-->
         </div>
         <!--end::Topbar-->
     </div>
