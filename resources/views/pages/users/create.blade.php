@@ -38,7 +38,7 @@
                     :showMeter="false" hint="" required />
 
                 <x-form.select label="Role" name="role" placeholder="Select Role" :options="[
-                    App\Models\User::ROLE_ADMIN => 'Admin',
+                    App\Models\User::ROLE_ROOT => 'Root',
                     App\Models\User::ROLE_USER => 'User',
                 ]" required />
 

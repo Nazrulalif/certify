@@ -31,11 +31,12 @@
             </div>
             <!--end::Aside mobile toggle-->
             <!--begin::Logo-->
-            <a href="{{ url('/') }}" class="d-flex align-items-center">
+            <a href="{{ url('/') }}" class="logo-font fs-2hx text-gray-800 text-hover-primary">certify.</a>
+            {{-- <a href="{{ url('/') }}" class="d-flex align-items-center">
                 <img alt="Logo" src="{{ asset('assets/media/logos/demo3.svg') }}" class="theme-light-show h-20px" />
                 <img alt="Logo" src="{{ asset('assets/media/logos/demo3-dark.svg') }}"
                     class="theme-dark-show h-20px" />
-            </a>
+            </a> --}}
             <!--end::Logo-->
         </div>
         <!--end::Wrapper-->

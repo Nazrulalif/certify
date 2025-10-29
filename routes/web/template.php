@@ -1,21 +1,11 @@
 <?php
 
-use App\Http\Controllers\Web\App\DashboardController;
-use App\Http\Controllers\Web\App\GlobalSearchController;
 use App\Http\Controllers\Web\App\TemplateController;
+use App\Http\Controllers\Web\App\UsersController;
 use Illuminate\Support\Facades\Route;
+// Authenticated Routes (only accessible when logged in)
 
-// Include authentication routes
-require __DIR__ . '/auth.php';
-require __DIR__ . '/user.php';
-require __DIR__ . '/template.php';
-
-// Protected Routes (require authentication)
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
-    // Global Search
-    Route::get('/global-search', [GlobalSearchController::class, 'search'])->middleware(['auth'])->name('global.search');
 
     // Template Management (Root and User can access)
     Route::middleware('user')->group(function () {

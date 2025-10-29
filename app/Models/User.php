@@ -18,14 +18,14 @@ class User extends Authenticatable
     /**
      * Role constants
      */
-    const ROLE_ADMIN = 1;
+    const ROLE_ROOT = 1;
     const ROLE_USER = 2;
 
     /**
      * Role labels
      */
     const ROLES = [
-        self::ROLE_ADMIN => 'Admin',
+        self::ROLE_ROOT => 'Root',
         self::ROLE_USER => 'User',
     ];
 
@@ -88,11 +88,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is admin
+     * Check if user is root
      */
-    public function isAdmin(): bool
+    public function isRoot(): bool
     {
-        return $this->role === self::ROLE_ADMIN;
+        return $this->role === self::ROLE_ROOT;
     }
 
     /**
@@ -128,11 +128,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope to get only admins
+     * Scope to get only root users
      */
-    public function scopeAdmins($query)
+    public function scopeRoots($query)
     {
-        return $query->where('role', self::ROLE_ADMIN);
+        return $query->where('role', self::ROLE_ROOT);
     }
 
     /**

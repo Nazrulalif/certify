@@ -15,7 +15,7 @@ return new class extends Migration
             $table->uuid('id');
             $table->string('name');
             $table->string('email')->unique();
-            $table->tinyInteger('role')->default(2)->comment('1=Admin, 2=User');
+            $table->tinyInteger('role')->default(2)->comment('1=Root, 2=User');
             $table->boolean('status')->default(true)->comment('Active/Inactive status');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');

@@ -14,6 +14,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // Configure guest middleware to redirect authenticated users to dashboard
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->redirectUsersTo(fn () => route('dashboard'));
+
+        // Register role-based middleware
+        $middleware->alias([
+            'root' => \App\Http\Middleware\RootMiddleware::class,
+            'user' => \App\Http\Middleware\UserMiddleware::class,
+            'active' => \App\Http\Middleware\CheckActiveStatus::class,
+        ]);
+
+        // Apply active status check to web routes
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckActiveStatus::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

@@ -14,22 +14,22 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create or update admin user
+        // Create or update root user
         User::updateOrCreate(
-            ['email' => 'admin@yahoo.com'],
+            ['email' => 'root@certify.com'],
             [
-                'name' => 'Admin User',
+                'name' => 'Root Admin',
                 'password' => Hash::make('password'),
-                'role' => User::ROLE_ADMIN,
+                'role' => User::ROLE_ROOT,
                 'status' => true,
             ]
         );
 
-        // Create or update regular test user
+        // Create or update regular user
         User::updateOrCreate(
-            ['email' => 'user@example.com'],
+            ['email' => 'user@certify.com'],
             [
-                'name' => 'Test User',
+                'name' => 'Regular User',
                 'password' => Hash::make('password'),
                 'role' => User::ROLE_USER,
                 'status' => true,
@@ -38,7 +38,7 @@ class UserSeeder extends Seeder
 
         // Create an inactive user for testing
         User::updateOrCreate(
-            ['email' => 'inactive@example.com'],
+            ['email' => 'inactive@certify.com'],
             [
                 'name' => 'Inactive User',
                 'password' => Hash::make('password'),
@@ -49,20 +49,19 @@ class UserSeeder extends Seeder
 
         $this->command->info('Users seeded successfully!');
         $this->command->info('');
-        $this->command->info('Admin Account:');
-        $this->command->info('  Email: admin@yahoo.com');
+        $this->command->info('Root Account:');
+        $this->command->info('  Email: root@certify.com');
         $this->command->info('  Password: password');
-        $this->command->info('  Role: Admin');
+        $this->command->info('  Role: Root');
         $this->command->info('');
         $this->command->info('Regular User Account:');
-        $this->command->info('  Email: user@example.com');
+        $this->command->info('  Email: user@certify.com');
         $this->command->info('  Password: password');
         $this->command->info('  Role: User');
         $this->command->info('');
         $this->command->info('Inactive User Account:');
-        $this->command->info('  Email: inactive@example.com');
+        $this->command->info('  Email: inactive@certify.com');
         $this->command->info('  Password: password');
-        $this->command->info('  Role: User');
-        $this->command->info('  Status: Inactive');
+        $this->command->info('  Role: User (Inactive)');
     }
 }

@@ -6,7 +6,7 @@
     <!--begin::Brand-->
     <div class="aside-logo flex-column-auto px-9 mb-9" id="kt_aside_logo">
 
-        <div class="logo-font fs-2hx">studio.</div>
+        <a href="{{ url('/') }}" class="logo-font fs-2hx text-gray-800 text-hover-primary">certify.</a>
 
         <!--begin::Logo-->
         {{-- <a href="{{ url('/') }}">
@@ -30,9 +30,15 @@
                 id="#kt_aside_menu" data-kt-menu="true">
                 <x-menu.item route="dashboard" title="Dashboards" icon="ki-duotone ki-element-11 fs-2"
                     id="menu-dashboard" activeRoute="dashboard" />
-                <x-menu.accordion title="Control Panel" icon="ki-duotone ki-setting-4 fs-2" activeWhen="users*">
-                    <x-menu.sub-item route="users.index" activeRoute="users.*" title="User Management" />
-                </x-menu.accordion>
+                <x-menu.item route="templates.index" title="Templates" icon="ki-duotone ki-some-files fs-2"
+                    id="menu-templates" activeRoute="templates.*" />
+                
+                @if (auth()->user()->isRoot())
+                    <x-menu.accordion title="Control Panel" icon="ki-duotone ki-setting-4 fs-2" activeWhen="users*">
+                        <x-menu.sub-item route="users.index" activeRoute="users.*" title="User Management" />
+                    </x-menu.accordion>
+                @endif
+                
             </div>
             <!--end::Menu-->
         </div>

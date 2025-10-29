@@ -39,7 +39,7 @@ class UsersController extends Controller
                     return $row->id === Auth::user()->id ? true : false;
                 })
                 ->addColumn('role', function ($row) {
-                    $badgeClass = $row->role === User::ROLE_ADMIN ? 'badge-light-danger' : 'badge-light-primary';
+                    $badgeClass = $row->role === User::ROLE_ROOT ? 'badge-light-danger' : 'badge-light-primary';
                     $roleName = $row->getRoleName();
                     return '<span class="badge ' . $badgeClass . '">' . $roleName . '</span>';
                 })
@@ -88,7 +88,7 @@ class UsersController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:' . User::ROLE_ADMIN . ',' . User::ROLE_USER,
+            'role' => 'required|in:' . User::ROLE_ROOT . ',' . User::ROLE_USER,
             'status' => 'nullable|boolean',
         ]);
 
@@ -111,7 +111,7 @@ class UsersController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
             'password' => 'nullable|min:8|confirmed',
-            'role' => 'required|in:' . User::ROLE_ADMIN . ',' . User::ROLE_USER,
+            'role' => 'required|in:' . User::ROLE_ROOT . ',' . User::ROLE_USER,
             'status' => 'nullable|boolean',
         ]);
 
