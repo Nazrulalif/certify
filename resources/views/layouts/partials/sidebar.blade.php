@@ -32,13 +32,15 @@
                     id="menu-dashboard" activeRoute="dashboard" />
                 <x-menu.item route="templates.index" title="Templates" icon="ki-duotone ki-some-files fs-2"
                     id="menu-templates" activeRoute="templates.*" />
-                
+                <x-menu.item route="events.index" title="Events" icon="ki-duotone ki-element-8 fs-2" id="menu-events"
+                    activeRoute="events.*" />
+
                 @if (auth()->user()->isRoot())
                     <x-menu.accordion title="Control Panel" icon="ki-duotone ki-setting-4 fs-2" activeWhen="users*">
                         <x-menu.sub-item route="users.index" activeRoute="users.*" title="User Management" />
                     </x-menu.accordion>
                 @endif
-                
+
             </div>
             <!--end::Menu-->
         </div>

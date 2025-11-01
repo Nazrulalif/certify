@@ -93,9 +93,8 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-5">
-                        <x-form.input label="Field Name" id="field-name" name="field_name" 
-                                      placeholder="e.g., participant_name" 
-                                      help="Unique identifier for this field" />
+                        <x-form.input label="Field Name" id="field-name" name="field_name"
+                            placeholder="e.g., participant_name" help="Unique identifier for this field" />
                     </div>
 
                     <div class="mb-5">
@@ -107,8 +106,8 @@
                     </div>
 
                     <div class="mb-5">
-                        <x-form.input label="Font Size" type="number" id="font-size" name="font_size" 
-                                      value="16" min="8" max="200" />
+                        <x-form.input label="Font Size" type="number" id="font-size" name="font_size" value="16"
+                            min="8" max="200" />
                     </div>
 
                     <div class="mb-5">
@@ -180,7 +179,7 @@
                 </div>
             </div>
             <!--end::Template Info-->
-            
+
         </div>
         <!--end::Right column-->
     </div>
@@ -196,37 +195,40 @@
                 <div class="modal-body">
                     <form id="add-field-form">
                         <div class="mb-5">
-                            <x-form.input label="Field Name" id="new-field-name" name="new_field_name" 
-                                          placeholder="e.g., participant_name, event_name, date" required 
-                                          help="This will be the unique identifier for this field" />
+                            <x-form.input label="Field Name" id="new-field-name" name="new_field_name"
+                                placeholder="e.g., participant_name, event_name, date" required
+                                help="This will be the unique identifier for this field" />
                         </div>
 
                         <div class="mb-5">
-                            <x-form.select label="Field Type" id="new-field-type" name="new_field_type" :options="[
-                                'text' => 'Text',
-                                'date' => 'Date',
-                                'number' => 'Number',
-                            ]" />
+                            <x-form.select label="Field Type" id="new-field-type" name="new_field_type"
+                                :options="[
+                                    'text' => 'Text',
+                                    'date' => 'Date',
+                                    'number' => 'Number',
+                                ]" />
                         </div>
 
                         <div class="mb-5">
-                            <x-form.input label="Font Size" type="number" id="new-font-size" name="new_font_size" 
-                                          value="16" min="8" max="200" />
+                            <x-form.input label="Font Size" type="number" id="new-font-size" name="new_font_size"
+                                value="16" min="8" max="200" />
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-5">
-                                <x-form.select label="Font Family" id="new-font-family" name="new_font_family" :options="[
-                                    'Arial' => 'Arial',
-                                    'Times New Roman' => 'Times New Roman',
-                                    'Courier New' => 'Courier New',
-                                    'Georgia' => 'Georgia',
-                                    'Verdana' => 'Verdana',
-                                ]" />
+                                <x-form.select label="Font Family" id="new-font-family" name="new_font_family"
+                                    :options="[
+                                        'Arial' => 'Arial',
+                                        'Times New Roman' => 'Times New Roman',
+                                        'Courier New' => 'Courier New',
+                                        'Georgia' => 'Georgia',
+                                        'Verdana' => 'Verdana',
+                                    ]" />
                             </div>
                             <div class="col-md-6 mb-5">
                                 <label class="form-label">Text Color</label>
-                                <input type="color" id="new-text-color" class="form-control form-control-color" value="#000000">
+                                <input type="color" id="new-text-color" class="form-control form-control-color"
+                                    value="#000000">
                             </div>
                         </div>
 
@@ -289,7 +291,7 @@
                 // Calculate scale to fit canvas
                 const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
                 canvasScaleRatio = scale;
-                
+
                 img.scale(scale);
                 canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas), {
                     scaleX: scale,
@@ -350,20 +352,20 @@
                 ...options
             });
             textObj.fieldType = options.fieldType || 'text';
-            
+
             // Set control visibility
             textObj.setControlsVisibility({
                 mt: false, // middle top
                 mb: false, // middle bottom
-                ml: true,  // middle left
-                mr: true,  // middle right
-                bl: true,  // bottom left
-                br: true,  // bottom right
-                tl: true,  // top left
-                tr: true,  // top right
-                mtr: true  // rotation control
+                ml: true, // middle left
+                mr: true, // middle right
+                bl: true, // bottom left
+                br: true, // bottom right
+                tl: true, // top left
+                tr: true, // top right
+                mtr: true // rotation control
             });
-            
+
             canvas.add(textObj);
             canvas.setActiveObject(textObj);
             canvas.renderAll();
@@ -379,23 +381,23 @@
             document.getElementById('new-text-color').value = '#000000';
             document.getElementById('new-text-bold').checked = false;
             document.getElementById('new-text-italic').checked = false;
-            
+
             // Reset Select2 dropdowns
             const newFieldTypeSelect = document.getElementById('new-field-type');
             const newFontFamilySelect = document.getElementById('new-font-family');
-            
+
             if ($(newFieldTypeSelect).hasClass('select2-hidden-accessible')) {
                 $(newFieldTypeSelect).val('text').trigger('change');
             } else {
                 newFieldTypeSelect.value = 'text';
             }
-            
+
             if ($(newFontFamilySelect).hasClass('select2-hidden-accessible')) {
                 $(newFontFamilySelect).val('Arial').trigger('change');
             } else {
                 newFontFamilySelect.value = 'Arial';
             }
-            
+
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('addFieldModal'));
             modal.show();
@@ -404,21 +406,21 @@
         // Confirm add field from modal
         document.getElementById('confirm-add-field').addEventListener('click', function() {
             const fieldName = document.getElementById('new-field-name').value.trim();
-            
+
             if (!fieldName) {
                 alert('Please enter a field name');
                 return;
             }
 
             // Get field properties from modal - compatible with Select2
-            const fieldType = $('#new-field-type').hasClass('select2-hidden-accessible') 
-                ? $('#new-field-type').val() 
-                : document.getElementById('new-field-type').value;
-                
-            const fontFamily = $('#new-font-family').hasClass('select2-hidden-accessible') 
-                ? $('#new-font-family').val() 
-                : document.getElementById('new-font-family').value;
-                
+            const fieldType = $('#new-field-type').hasClass('select2-hidden-accessible') ?
+                $('#new-field-type').val() :
+                document.getElementById('new-field-type').value;
+
+            const fontFamily = $('#new-font-family').hasClass('select2-hidden-accessible') ?
+                $('#new-font-family').val() :
+                document.getElementById('new-font-family').value;
+
             const fontSize = parseInt(document.getElementById('new-font-size').value);
             const textColor = document.getElementById('new-text-color').value;
             const isBold = document.getElementById('new-text-bold').checked;
@@ -475,7 +477,7 @@
                     });
                     canvas.renderAll();
                     document.getElementById('field-properties').style.display = 'none';
-                    
+
                     Swal.fire(
                         'Cleared!',
                         'All text fields have been removed.',
@@ -503,24 +505,24 @@
 
             document.getElementById('field-properties').style.display = 'block';
             document.getElementById('field-name').value = obj.text;
-            
+
             // Update field type - compatible with Select2
             const fieldTypeSelect = document.getElementById('field-type');
             fieldTypeSelect.value = obj.fieldType || 'text';
             if ($(fieldTypeSelect).hasClass('select2-hidden-accessible')) {
                 $(fieldTypeSelect).trigger('change');
             }
-            
+
             // Show original font size (unscaled)
             document.getElementById('font-size').value = Math.round(obj.fontSize / canvasScaleRatio);
-            
+
             // Update font family - compatible with Select2
             const fontFamilySelect = document.getElementById('font-family');
             fontFamilySelect.value = obj.fontFamily;
             if ($(fontFamilySelect).hasClass('select2-hidden-accessible')) {
                 $(fontFamilySelect).trigger('change');
             }
-            
+
             document.getElementById('text-color').value = obj.fill;
             document.getElementById('text-bold').checked = obj.fontWeight === 'bold';
             document.getElementById('text-italic').checked = obj.fontStyle === 'italic';
@@ -532,13 +534,13 @@
             if (!activeObject) return;
 
             // Get values - compatible with Select2
-            const fieldTypeValue = $('#field-type').hasClass('select2-hidden-accessible') 
-                ? $('#field-type').val() 
-                : document.getElementById('field-type').value;
-                
-            const fontFamilyValue = $('#font-family').hasClass('select2-hidden-accessible') 
-                ? $('#font-family').val() 
-                : document.getElementById('font-family').value;
+            const fieldTypeValue = $('#field-type').hasClass('select2-hidden-accessible') ?
+                $('#field-type').val() :
+                document.getElementById('field-type').value;
+
+            const fontFamilyValue = $('#font-family').hasClass('select2-hidden-accessible') ?
+                $('#font-family').val() :
+                document.getElementById('font-family').value;
 
             activeObject.set({
                 text: document.getElementById('field-name').value,
@@ -568,17 +570,17 @@
         // Save fields to database (convert back to original image coordinates)
         document.getElementById('save-fields-btn').addEventListener('click', function() {
             const objects = canvas.getObjects().filter(obj => obj.type === 'i-text');
-            
+
             if (objects.length === 0) {
                 toastr.warning('No text fields to save. Add at least one field first.');
                 return;
             }
-            
+
             const fields = objects.map(obj => {
                 // Calculate actual dimensions considering scale
                 const actualWidth = obj.width * obj.scaleX;
                 const actualHeight = obj.height * obj.scaleY;
-                
+
                 return {
                     field_name: obj.text,
                     field_type: obj.fieldType || 'text',
@@ -642,7 +644,7 @@
             const timestamp = new Date().getTime();
             link.download = `${templateName}-preview-${timestamp}.png`;
             link.href = dataURL;
-            
+
             // Trigger download
             document.body.appendChild(link);
             link.click();

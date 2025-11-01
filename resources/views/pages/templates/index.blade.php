@@ -44,7 +44,7 @@
                             <div class="card border border-2 border-gray-300 border-hover">
                                 <div class="card-header border-0 pt-9">
                                     <div class="card-title m-0">
-                                        <div class="symbol symbol-50px w-50px bg-light">
+                                        <div class="symbol symbol-50px w-50px">
                                             <i class="ki-duotone ki-document fs-2x text-primary">
                                                 <span class="path1"></span>
                                                 <span class="path2"></span>
@@ -89,7 +89,8 @@
                                                     method="POST" class="d-inline delete-template-form">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="button" class="dropdown-item text-danger delete-template-btn">
+                                                    <button type="button"
+                                                        class="dropdown-item text-danger delete-template-btn">
                                                         <i class="ki-duotone ki-trash fs-5 me-2">
                                                             <span class="path1"></span>
                                                             <span class="path2"></span>
@@ -131,7 +132,7 @@
                                                                 data-original-y="{{ $field->y }}"
                                                                 data-original-font-size="{{ $field->font_size }}"
                                                                 style="
-                                                        position: absolute; 
+                                                        position: absolute;
                                                         font-family: {{ $field->font_family }};
                                                         color: {{ $field->color }};
                                                         font-weight: {{ $field->bold ? 'bold' : 'normal' }};
@@ -261,7 +262,7 @@
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     const form = this.closest('.delete-template-form');
-                    
+
                     Swal.fire({
                         title: 'Are you sure?',
                         text: "This will permanently delete the template and all its fields!",

@@ -1,12 +1,10 @@
 @props([
     'label' => '',
     'name' => '',
-    'type' => 'text',
     'value' => '',
     'placeholder' => '',
+    'rows' => 3,
     'required' => false,
-    'autofocus' => false,
-    'autocomplete' => 'off',
     'help' => '',
     'size' => '', // 'sm' or 'lg' or empty for default
 ])
@@ -16,10 +14,10 @@
         <label
             class="{{ $required ? 'required' : '' }} form-label{{ $size ? ' fw-bold fs-7 mb-2' : '' }}">{{ $label }}</label>
     @endif
-    <input type="{{ $type }}" name="{{ $name }}" placeholder="{{ $placeholder }}"
-        autocomplete="{{ $autocomplete }}" {{ $required ? 'required' : '' }} {{ $autofocus ? 'autofocus' : '' }}
+    <textarea name="{{ $name }}" placeholder="{{ $placeholder }}" {{ $required ? 'required' : '' }}
+        rows="{{ $rows }}"
         class="form-control{{ $size ? ' form-control-' . $size : '' }} @error($name) is-invalid @enderror"
-        value="{{ old($name, $value) }}" {{ $attributes }} />
+        {{ $attributes }}>{{ old($name, $value) }}</textarea>
 
     @if ($help)
         <div class="form-text">{{ $help }}</div>

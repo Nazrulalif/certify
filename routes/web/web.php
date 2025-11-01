@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 require __DIR__ . '/auth.php';
 require __DIR__ . '/user.php';
 require __DIR__ . '/template.php';
+require __DIR__ . '/event.php';
 
 // Protected Routes (require authentication)
 Route::middleware('auth')->group(function () {
@@ -24,4 +25,3 @@ Route::middleware('auth')->group(function () {
         Route::post('templates/{template}/set-default', [TemplateController::class, 'setDefault'])->name('templates.set-default');
     });
 });
-
