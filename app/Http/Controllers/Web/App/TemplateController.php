@@ -70,7 +70,6 @@ class TemplateController extends Controller
             return redirect()
                 ->route('templates.edit', $template->id)
                 ->with('success', 'Template created successfully! Now add fields to your template.');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()
@@ -122,7 +121,6 @@ class TemplateController extends Controller
             DB::commit();
 
             return back()->with('success', 'Template updated successfully!');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to update template: ' . $e->getMessage());
@@ -167,7 +165,6 @@ class TemplateController extends Controller
                 'success' => true,
                 'message' => 'Template fields saved successfully!',
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -193,7 +190,6 @@ class TemplateController extends Controller
             return redirect()
                 ->route('templates.index')
                 ->with('success', 'Template deleted successfully!');
-
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to delete template: ' . $e->getMessage());
         }
@@ -216,7 +212,6 @@ class TemplateController extends Controller
             DB::commit();
 
             return back()->with('success', 'Template set as default successfully!');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Failed to set default: ' . $e->getMessage());

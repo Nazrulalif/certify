@@ -158,7 +158,7 @@ class UsersController extends Controller
             $user = User::findOrFail($id);
 
             // Prevent deactivating current user
-            if ($user->id === auth()->id()) {
+            if ($user->id === Auth::id()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'You cannot deactivate your own account'
@@ -217,7 +217,7 @@ class UsersController extends Controller
             }
 
             // Prevent deleting current logged-in user
-            $currentUserId = auth()->id();
+            $currentUserId = Auth::id();
             if (in_array($currentUserId, $ids)) {
                 return response()->json([
                     'success' => false,

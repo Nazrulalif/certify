@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('template_fields', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->foreignId('template_id')->constrained('templates')->onDelete('cascade');
+            $table->foreignUuid('template_id')->constrained('templates')->onDelete('cascade');
             $table->string('field_name'); // e.g., 'name', 'event_name', 'date'
             $table->string('field_type')->default('text'); // text, date, number
             $table->decimal('x', 8, 2)->default(0); // X position

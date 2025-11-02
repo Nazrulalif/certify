@@ -124,7 +124,7 @@ certificates (id, event_id, registration_id, certificate_number, qr_code, pdf_pa
 
 ---
 
-## Phase 3: Event Management
+## Phase 3: Event Management ✅ COMPLETE
 
 ### Database
 
@@ -134,106 +134,132 @@ certificates (id, event_id, registration_id, certificate_number, qr_code, pdf_pa
 
 ### Backend
 
--   [x] Event model
+-   [x] Event model with slug generation
 -   [x] EventField model
 -   [x] Registration model
 -   [x] Event controller (CRUD)
--   [x] Registration controller
+-   [x] Registration controller with DataTables
 -   [x] Public registration form controller
 
 ### Frontend
 
--   [x] Event list page
--   [x] Event create/edit form
+-   [x] Event list page (grid cards)
+-   [x] Event create/edit form with Blade components
 -   [x] Template selection dropdown
 -   [x] Form builder interface
--   [x] Add/remove form fields
--   [x] Field type selection (text, email, date, dropdown, number)
+-   [x] Add/remove form fields dynamically
+-   [x] Field type selection (text, email, date, textarea, select, number)
 -   [x] Required field toggle
 -   [x] Public registration form (no auth)
--   [x] Registration list per event
+-   [x] Registration list with DataTables
 -   [x] Registration status management
+-   [x] Bulk delete registrations
 
 ### Features
 
 -   [x] Create event with template
--   [x] Enable/disable registration
--   [x] Dynamic form builder
--   [x] Generate public URL
--   [x] View registrations
--   [x] Export registrations
+-   [x] Enable/disable registration toggle
+-   [x] Dynamic form builder with JavaScript
+-   [x] Auto-generate unique slug
+-   [x] Public registration URL (/register/{slug})
+-   [x] View registrations with server-side DataTables
+-   [x] Bulk operations (delete)
+-   [x] Custom Blade form components (input, textarea, select)
 
 ---
 
-## Phase 4: Certificate Generation
+## Phase 4: Certificate Generation (In Progress - 85%)
 
 ### Database
 
--   [ ] `certificates` table migration
+-   [x] `certificates` table migration (UUID primary key)
+-   [x] Foreign keys: event_id, registration_id, generated_by
 
 ### Backend
 
--   [ ] Certificate model
--   [ ] Certificate controller
--   [ ] DomPDF integration
--   [ ] Excel import/export (PhpSpreadsheet)
--   [ ] QR code generation
--   [ ] Bulk generation queue jobs
--   [ ] Certificate number generator
+-   [x] Certificate model with UUID
+-   [x] Certificate controller (CRUD + DataTables)
+-   [x] CertificateService class
+-   [x] DomPDF integration (barryvdh/laravel-dompdf v3.1.1)
+-   [x] QR code generation (simplesoftwareio/simple-qrcode v4.2.0)
+-   [x] Certificate number auto-generation (CERT-YYYY-NNNNNN)
+-   [x] Bulk generation from registrations
+-   [x] Manual entry generation
+-   [x] Regenerate certificate functionality
+-   [x] VerificationController for public verification
+-   [ ] Excel import/export (PhpSpreadsheet) - Pending
+-   [ ] Queue jobs for bulk generation - Pending
+-   [ ] Email delivery system - Pending
 
 ### Frontend
 
--   [ ] Certificate list page
--   [ ] Generation options page
-    -   [ ] From registrations
-    -   [ ] Bulk Excel upload
-    -   [ ] Single manual entry
--   [ ] Excel template download
--   [ ] Certificate preview modal
--   [ ] Bulk selection interface
--   [ ] Download/email options
+-   [x] Certificate list page with DataTables
+-   [x] Generation options page (3 methods)
+-   [x] Method 1: From registrations modal
+    -   [x] Select event dropdown
+    -   [x] Load registrations without certificates
+    -   [x] Checkbox selection with "Select All"
+    -   [x] Bulk generate with progress feedback
+-   [x] Method 2: Manual entry modal
+    -   [x] Dynamic form based on event fields
+    -   [x] Field validation
+    -   [x] Single certificate generation
+-   [x] Method 3: Excel import modal (UI only)
+    -   [ ] Excel upload functionality - Pending
+    -   [ ] Template download - Pending
+    -   [ ] Data preview - Pending
+-   [x] Certificate action buttons (view, download, regenerate, delete)
+-   [x] Bulk delete certificates
+-   [ ] Certificate preview modal - Pending
+-   [ ] Bulk download as ZIP - Pending
 
 ### Features
 
--   [ ] Generate from event registrations
--   [ ] Excel template with dynamic columns
--   [ ] Parse Excel and validate
--   [ ] Bulk certificate generation
--   [ ] Single certificate generation
--   [ ] Unique certificate ID/number
--   [ ] QR code with verification URL
--   [ ] PDF storage
--   [ ] Download single PDF
--   [ ] Bulk download certificates (ZIP)
--   [ ] Preview certificate before download
--   [ ] Email single certificate
--   [ ] Bulk email certificates (blast)
--   [ ] Email queue for large batches
--   [ ] Email template customization
--   [ ] Regenerate certificate
+-   [x] Generate from event registrations (bulk)
+-   [x] Single certificate generation (manual)
+-   [x] Auto-increment certificate numbers per year
+-   [x] QR code generation with verification URL
+-   [x] PDF generation using DomPDF
+-   [x] PDF template view with field positioning
+-   [x] Storage in /storage/app/certificates/
+-   [x] Download single PDF
+-   [x] Regenerate certificate (updates PDF)
+-   [x] Delete with automatic file cleanup
+-   [x] DataTables with search/sort/pagination
+-   [ ] Excel template with dynamic columns - Pending
+-   [ ] Parse Excel and validate - Pending
+-   [ ] Bulk download certificates (ZIP) - Pending
+-   [ ] Certificate preview modal - Pending
+-   [ ] Email single certificate - Pending
+-   [ ] Bulk email certificates - Pending
+-   [ ] Email queue for large batches - Pending
+-   [ ] Email template customization - Pending
 
 ---
 
-## Phase 5: Verification System
+## Phase 5: Verification System (Pending)
 
 ### Backend
 
--   [ ] Public verification controller
--   [ ] Certificate lookup by ID
+-   [x] VerificationController created
+-   [x] Public verification routes
+-   [ ] Certificate lookup optimization
 
 ### Frontend
 
--   [ ] Public verification page
+-   [ ] Public verification page (/verify)
 -   [ ] Certificate details display
 -   [ ] QR code scanner integration (optional)
 -   [ ] Invalid certificate message
 
 ### Features
 
--   [ ] Verify by certificate number
--   [ ] Display certificate info
+-   [x] Verify by certificate number API
+-   [x] Display certificate info JSON
+-   [ ] Public verification form UI
 -   [ ] Show certificate PDF/image
--   [ ] Verification status
+-   [ ] Verification status display
+-   [ ] QR code scanner with camera
 
 ---
 
@@ -302,9 +328,14 @@ certificates (id, event_id, registration_id, certificate_number, qr_code, pdf_pa
 
 ## Current Progress
 
-**Last Updated**: October 29, 2025
-**Current Phase**: Phase 2 - Template Management ✅ COMPLETE
-**Next Phase**: Phase 3 - Event Management
+**Last Updated**: November 2, 2025
+**Current Phase**: Phase 4 - Certificate Generation (85% Complete)
+**Next Steps**:
+
+1. Test certificate generation (from registrations & manual entry)
+2. Complete Excel import functionality
+3. Build verification system UI
+4. Add email delivery system
 
 ### Phase 1 Completed ✅:
 
@@ -335,6 +366,44 @@ certificates (id, event_id, registration_id, certificate_number, qr_code, pdf_pa
 -   ✅ Set default template feature
 -   ✅ Delete template with image cleanup
 
+### Phase 3 Completed ✅:
+
+-   ✅ Events, EventFields, Registrations database tables
+-   ✅ Event model with auto-slug generation
+-   ✅ EventField & Registration models with relationships
+-   ✅ EventController with full CRUD operations
+-   ✅ RegistrationController with DataTables support
+-   ✅ Public registration form (no authentication)
+-   ✅ Event routes (protected + public)
+-   ✅ Event index page with card grid layout
+-   ✅ Event create/edit forms with Blade components
+-   ✅ Dynamic form builder with JavaScript
+-   ✅ Registration list with server-side DataTables
+-   ✅ Bulk delete registrations functionality
+-   ✅ Custom form components (x-form.input, x-form.textarea, x-form.select)
+
+### Phase 4 Progress (85%):
+
+-   ✅ Certificates table migration with UUID
+-   ✅ Certificate model with relationships
+-   ✅ CertificateController with CRUD + generation
+-   ✅ CertificateService for PDF/QR generation
+-   ✅ DomPDF integration (v3.1.1)
+-   ✅ QR code generation (simple-qrcode v4.2.0)
+-   ✅ Auto certificate number (CERT-YYYY-NNNNNN)
+-   ✅ Certificate list with DataTables
+-   ✅ Generation UI with 3 methods
+-   ✅ Method 1: From registrations (bulk)
+-   ✅ Method 2: Manual entry (single)
+-   ✅ Method 3: Excel import (UI placeholder)
+-   ✅ Download PDF functionality
+-   ✅ Regenerate certificate feature
+-   ✅ Bulk delete with file cleanup
+-   ✅ VerificationController backend
+-   ⏳ Excel import functionality (pending)
+-   ⏳ Email delivery system (pending)
+-   ⏳ Queue jobs for bulk operations (pending)
+
 ### Test Accounts:
 
 -   **Root**: root@certify.com / password
@@ -348,3 +417,23 @@ certificates (id, event_id, registration_id, certificate_number, qr_code, pdf_pa
 -   **Field Properties**: Name, type, font family, size, color, alignment, bold, italic, rotation
 -   **Default Template**: Set any template as default for events
 -   **Template Preview**: View all templates with thumbnail previews
+
+### Event Features:
+
+-   **Create Events**: Link to certificate template
+-   **Form Builder**: Dynamic registration form with multiple field types
+-   **Public Registration**: No-auth public form accessible via /register/{slug}
+-   **Registration Management**: DataTables list with search, sort, filter
+-   **Bulk Operations**: Delete multiple registrations at once
+
+### Certificate Features:
+
+-   **Generation Methods**:
+    -   Bulk from event registrations
+    -   Manual single entry
+    -   Excel import (UI ready)
+-   **PDF Generation**: DomPDF with template field positioning
+-   **QR Codes**: Auto-generated with verification URL
+-   **Certificate Numbers**: Auto-increment CERT-2025-000001 format
+-   **Management**: DataTables list, download, regenerate, delete
+-   **File Cleanup**: Auto-delete PDFs/QR codes on certificate deletion

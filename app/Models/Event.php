@@ -65,6 +65,11 @@ class Event extends Model
         return $this->hasMany(Registration::class);
     }
 
+    public function certificates(): HasMany
+    {
+        return $this->hasMany(Certificate::class);
+    }
+
     public function getPublicUrlAttribute(): string
     {
         return url("/register/{$this->slug}");

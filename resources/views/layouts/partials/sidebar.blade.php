@@ -34,6 +34,8 @@
                     id="menu-templates" activeRoute="templates.*" />
                 <x-menu.item route="events.index" title="Events" icon="ki-duotone ki-element-8 fs-2" id="menu-events"
                     activeRoute="events.*" />
+                <x-menu.item route="certificates.index" title="Certificates" icon="ki-duotone ki-files-tablet fs-2"
+                    id="menu-certificates" activeRoute="certificates.*" />
 
                 @if (auth()->user()->isRoot())
                     <x-menu.accordion title="Control Panel" icon="ki-duotone ki-setting-4 fs-2" activeWhen="users*">
