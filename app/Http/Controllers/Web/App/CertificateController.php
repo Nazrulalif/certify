@@ -44,6 +44,9 @@ class CertificateController extends Controller
                 ->addColumn('generated_by', function ($row) {
                     return $row->generator ? $row->generator->name : '-';
                 })
+                ->addColumn('generated_at', function ($row) {
+                    return $row->generated_at ? $row->generated_at->format('Y-m-d H:i') : '-';
+                })
                 ->addColumn('status', function ($row) {
                     if ($row->emailed_at) {
                         return '<span class="badge badge-success">Emailed</span>';

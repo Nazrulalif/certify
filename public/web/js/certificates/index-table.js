@@ -16,7 +16,7 @@ var KTCertificatesList = function () {
                 type: 'GET'
             },
             columns: [
-                { data: 'checkbox', orderable: false, searchable: false },
+                { data: "DT_RowIndex", name: "DT_RowIndex", searchable: false, orderable: false },
                 { data: 'certificate_number', name: 'certificate_number' },
                 { data: 'event', name: 'event.name' },
                 { data: 'recipient', name: 'recipient' },
