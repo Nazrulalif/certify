@@ -36,11 +36,34 @@ class Template extends Model
     ];
 
     /**
+     * Bootstrap the model and its traits.
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        // When deleting a template, clean up the background image
+        static::deleting(function ($template) {
+            if ($template->background && \Storage::disk('public')->exists($template->background)) {
+                \Storage::disk('public')->delete($template->background);
+            }
+        });
+    }
+
+    /**
      * Get the fields for the template.
      */
     public function fields(): HasMany
     {
         return $this->hasMany(TemplateField::class);
+    }
+
+    /**
+     * Get the events using this template.
+     */
+    public function events(): HasMany
+    {
+        return $this->hasMany(Event::class);
     }
 
     /**

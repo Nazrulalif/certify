@@ -84,11 +84,13 @@
                                 @foreach ($event->fields as $index => $field)
                                     <div class="field-item mb-5 p-5 border border-gray-300 rounded position-relative"
                                         data-index="{{ $index }}">
-                                        <button type="button"
-                                            class="btn btn-sm btn-icon btn-light-danger position-absolute"
+                                        <a class="position-absolute cursor-pointer"
                                             style="top: 10px; right: 10px;" onclick="removeField(this)">
-                                            <i class="ki-duotone ki-cross fs-2"></i>
-                                        </button>
+                                            <i class="ki-duotone ki-cross-circle text-danger fs-2">
+                                                <span class="path1"></span>
+                                                <span class="path2"></span>
+                                            </i>
+                                        </a>
 
                                         <div class="row g-3">
                                             <div class="col-md-6">
