@@ -12,6 +12,7 @@ Route::middleware('auth')->group(function () {
         Route::resource('templates', TemplateController::class);
         Route::post('templates/{template}/save-fields', [TemplateController::class, 'saveFields'])->name('templates.save-fields');
         Route::post('templates/{template}/set-default', [TemplateController::class, 'setDefault'])->name('templates.set-default');
+        Route::get('templates/{template}/preview', [TemplateController::class, 'downloadPreview'])->name('templates.preview');
     });
 });
 

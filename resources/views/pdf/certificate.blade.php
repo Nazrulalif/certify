@@ -44,8 +44,8 @@
 
         .field {
             position: absolute;
-            overflow: hidden;
-            word-wrap: break-word;
+            white-space: nowrap;
+            /* Allow text to flow naturally without cutoff */
         }
 
         .qr-code {
@@ -94,21 +94,43 @@
         @if ($backgroundExists ?? false)
             <img src="{{ $backgroundPath }}" alt="Certificate Background" class="background">
         @endif
-
+        
         <!-- Content Layer -->
         <div class="content">
             <!-- Dynamic Fields -->
             @foreach ($fields as $field)
-                <div class="field text-{{ $field['alignment'] }} {{ $field['bold'] ? 'font-bold' : '' }} {{ $field['italic'] ? 'font-italic' : '' }}"
+                @php
+                    // DomPDF doesn't support CSS transform, so we calculate positioning in PHP
+                    // Use page width (A4 landscape = 1122px) for dynamic container sizing
+                    $pageWidth = 1122;
+                    $leftPos = $field['x'];
+                    $containerWidth = 0;
+
+                    if ($field['alignment'] === 'center') {
+                        // For center: use full page width and position at 0
+                        // Text will be centered within the full page width
+                        $leftPos = 0;
+                        $containerWidth = $pageWidth;
+                    } elseif ($field['alignment'] === 'right') {
+                        // For right: container from 0 to x position
+                        $leftPos = 0;
+                        $containerWidth = $field['x'];
+                    } else {
+                        // For left: container from x to end of page
+                        $leftPos = $field['x'];
+                        $containerWidth = $pageWidth - $field['x'];
+                    }
+                @endphp
+                <div class="field {{ $field['bold'] ? 'font-bold' : '' }} {{ $field['italic'] ? 'font-italic' : '' }}"
                     style="
-                        left: {{ $field['x'] }}px;
+                        left: {{ $leftPos }}px;
                         top: {{ $field['y'] }}px;
-                        width: {{ $field['width'] }}px;
-                        height: {{ $field['height'] }}px;
+                        width: {{ $containerWidth }}px;
                         font-size: {{ $field['font_size'] }}px;
                         font-family: {{ $field['font_family'] }}, 'DejaVu Sans', sans-serif;
                         color: {{ $field['color'] }};
-                        line-height: {{ $field['height'] }}px;
+                        line-height: {{ $field['font_size'] * 1.2 }}px;
+                        text-align: {{ $field['alignment'] }};
                     ">
                     {{ $field['value'] }}
                 </div>

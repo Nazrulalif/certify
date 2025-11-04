@@ -217,4 +217,169 @@ class TemplateController extends Controller
             return back()->with('error', 'Failed to set default: ' . $e->getMessage());
         }
     }
+
+    /**
+     * Download template preview with dummy data.
+     */
+    public function downloadPreview(Template $template)
+    {
+        try {
+            // Load template fields
+            $template->load('fields');
+
+            // Check if template has fields
+            if ($template->fields->isEmpty()) {
+                return back()->with('error', 'Template has no fields. Please add fields before generating preview.');
+            }
+
+            // Generate dummy data based on field types
+            $dummyData = [];
+            foreach ($template->fields as $field) {
+                $dummyData[$field->field_name] = $this->generateDummyValue($field);
+            }
+
+            // Create a temporary certificate number
+            $previewCertNumber = 'PREVIEW-' . date('YmdHis');
+
+            // Generate temporary QR code for preview
+            $qrCode = \SimpleSoftwareIO\QrCode\Facades\QrCode::size(200)
+                ->margin(1)
+                ->errorCorrection('H')
+                ->generate(url('/verify/' . $previewCertNumber));
+
+            // Save temporary QR code
+            $qrDirectory = 'certificates/qrcodes/preview';
+            $qrFilename = $previewCertNumber . '.svg';
+            $qrCodePath = $qrDirectory . '/' . $qrFilename;
+            Storage::disk('public')->put($qrCodePath, $qrCode);
+
+            // Get template background
+            $backgroundPath = Storage::disk('public')->path($template->background);
+            $qrCodeFullPath = Storage::disk('public')->path($qrCodePath);
+
+            // Get image dimensions and calculate scale
+            $imageSize = @getimagesize($backgroundPath);
+            $originalWidth = $imageSize ? $imageSize[0] : 1122;
+            $originalHeight = $imageSize ? $imageSize[1] : 794;
+            $pdfWidth = 1122;
+            $pdfHeight = 794;
+            $scaleX = $pdfWidth / $originalWidth;
+            $scaleY = $pdfHeight / $originalHeight;
+
+            // Prepare field data
+            $fields = $template->fields->map(function ($field) use ($dummyData, $scaleX, $scaleY) {
+                return [
+                    'field_name' => $field->field_name,
+                    'value' => $dummyData[$field->field_name] ?? '',
+                    'x' => $field->x * $scaleX,
+                    'y' => $field->y * $scaleY,
+                    'width' => $field->width * $scaleX,
+                    'height' => $field->height * $scaleY,
+                    'font_size' => $field->font_size * min($scaleX, $scaleY),
+                    'font_family' => $field->font_family,
+                    'color' => $field->color,
+                    'alignment' => $field->text_align,
+                    'bold' => $field->bold,
+                    'italic' => $field->italic,
+                ];
+            });
+
+            // Convert background to base64
+            $backgroundBase64 = null;
+            $backgroundExists = false;
+            if (file_exists($backgroundPath)) {
+                $imageData = base64_encode(file_get_contents($backgroundPath));
+                $imageType = pathinfo($backgroundPath, PATHINFO_EXTENSION);
+                $backgroundBase64 = "data:image/{$imageType};base64,{$imageData}";
+                $backgroundExists = true;
+            }
+
+            // Create preview certificate object
+            $previewCertificate = (object) [
+                'certificate_number' => $previewCertNumber,
+                'data' => $dummyData,
+            ];
+
+            // Generate PDF
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.certificate', [
+                'certificate' => $previewCertificate,
+                'template' => $template,
+                'backgroundPath' => $backgroundBase64,
+                'backgroundExists' => $backgroundExists,
+                'qrCodePath' => $qrCodeFullPath,
+                'fields' => $fields,
+                'data' => $dummyData,
+            ]);
+
+            $pdf->setPaper('a4', 'landscape');
+
+            // Clean up temporary QR code
+            if (Storage::disk('public')->exists($qrCodePath)) {
+                Storage::disk('public')->delete($qrCodePath);
+            }
+
+            // Download PDF
+            return $pdf->download($template->name . '-preview.pdf');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'Failed to generate preview: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Generate dummy value based on field type and name.
+     */
+    private function generateDummyValue(TemplateField $field): string
+    {
+        $fieldName = strtolower($field->field_name);
+
+        // Check field type
+        if ($field->field_type === 'date') {
+            return date('F d, Y'); // e.g., "January 15, 2025"
+        }
+
+        if ($field->field_type === 'number') {
+            return '12345';
+        }
+
+        // Generate based on field name
+        if (str_contains($fieldName, 'name')) {
+            return 'Christopher Alexander Johnson';
+        }
+
+        if (str_contains($fieldName, 'email')) {
+            return 'example@email.com';
+        }
+
+        if (str_contains($fieldName, 'date')) {
+            return date('F d, Y');
+        }
+
+        if (str_contains($fieldName, 'event')) {
+            return 'Professional Development Workshop 2025';
+        }
+
+        if (str_contains($fieldName, 'course')) {
+            return 'Advanced Leadership Training Program';
+        }
+
+        if (str_contains($fieldName, 'organization')) {
+            return 'International Professional Association';
+        }
+
+        if (str_contains($fieldName, 'title')) {
+            return 'Certificate of Achievement';
+        }
+
+        if (str_contains($fieldName, 'score') || str_contains($fieldName, 'grade')) {
+            return '95%';
+        }
+
+        if (str_contains($fieldName, 'hours')) {
+            return '40 Hours';
+        }
+
+        // Default: Lorem ipsum style text
+        return 'Lorem Ipsum Dolor Sit Amet';
+    }
 }

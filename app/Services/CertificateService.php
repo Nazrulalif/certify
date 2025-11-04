@@ -124,7 +124,7 @@ class CertificateService
                 'font_size' => $field->font_size * min($scaleX, $scaleY), // Use min for font to prevent distortion
                 'font_family' => $field->font_family,
                 'color' => $field->color,
-                'alignment' => $field->alignment,
+                'alignment' => $field->text_align,
                 'bold' => $field->bold,
                 'italic' => $field->italic,
             ];

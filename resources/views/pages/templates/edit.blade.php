@@ -136,6 +136,39 @@
                         </div>
                     </div>
 
+                    <div class="mb-5">
+                        <label class="form-label">Text Alignment</label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-sm btn-light-primary align-btn" data-align="left">
+                                <i class="ki-duotone ki-text-align-left fs-3">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                    <span class="path3"></span>
+                                    <span class="path4"></span>
+                                </i>
+                                Left
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light-primary align-btn" data-align="center">
+                                <i class="ki-duotone ki-text-align-center fs-3">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                    <span class="path3"></span>
+                                    <span class="path4"></span>
+                                </i>
+                                Center
+                            </button>
+                            <button type="button" class="btn btn-sm btn-light-primary align-btn" data-align="right">
+                                <i class="ki-duotone ki-text-align-right fs-3">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                    <span class="path3"></span>
+                                    <span class="path4"></span>
+                                </i>
+                                Right
+                            </button>
+                        </div>
+                    </div>
+
                     <button type="button" class="btn btn-primary w-100" id="apply-properties-btn">
                         Apply Properties
                     </button>
@@ -243,6 +276,39 @@
                                     <input class="form-check-input" type="checkbox" id="new-text-italic">
                                     <label class="form-check-label">Italic</label>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <label class="form-label">Text Alignment</label>
+                            <div class="btn-group w-100" role="group">
+                                <button type="button" class="btn btn-sm btn-light-primary new-align-btn active" data-align="left">
+                                    <i class="ki-duotone ki-text-align-left fs-3">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                        <span class="path3"></span>
+                                        <span class="path4"></span>
+                                    </i>
+                                    Left
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light-primary new-align-btn" data-align="center">
+                                    <i class="ki-duotone ki-text-align-center fs-3">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                        <span class="path3"></span>
+                                        <span class="path4"></span>
+                                    </i>
+                                    Center
+                                </button>
+                                <button type="button" class="btn btn-sm btn-light-primary new-align-btn" data-align="right">
+                                    <i class="ki-duotone ki-text-align-right fs-3">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                        <span class="path3"></span>
+                                        <span class="path4"></span>
+                                    </i>
+                                    Right
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -398,6 +464,14 @@
                 newFontFamilySelect.value = 'Arial';
             }
 
+            // Reset alignment buttons to 'left'
+            document.querySelectorAll('.new-align-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.align === 'left') {
+                    btn.classList.add('active');
+                }
+            });
+
             // Show modal
             const modal = new bootstrap.Modal(document.getElementById('addFieldModal'));
             modal.show();
@@ -426,12 +500,17 @@
             const isBold = document.getElementById('new-text-bold').checked;
             const isItalic = document.getElementById('new-text-italic').checked;
 
+            // Get selected alignment
+            const activeAlignBtn = document.querySelector('.new-align-btn.active');
+            const textAlign = activeAlignBtn ? activeAlignBtn.dataset.align : 'left';
+
             // Add text field with properties
             addTextField(fieldName, {
                 fieldType: fieldType,
                 fontSize: fontSize * canvasScaleRatio,
                 fontFamily: fontFamily,
                 fill: textColor,
+                textAlign: textAlign,
                 fontWeight: isBold ? 'bold' : 'normal',
                 fontStyle: isItalic ? 'italic' : 'normal'
             });
@@ -526,6 +605,15 @@
             document.getElementById('text-color').value = obj.fill;
             document.getElementById('text-bold').checked = obj.fontWeight === 'bold';
             document.getElementById('text-italic').checked = obj.fontStyle === 'italic';
+
+            // Update alignment buttons
+            const currentAlign = obj.textAlign || 'left';
+            document.querySelectorAll('.align-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.align === currentAlign) {
+                    btn.classList.add('active');
+                }
+            });
         }
 
         // Apply properties to selected object
@@ -555,7 +643,7 @@
             canvas.renderAll();
         });
 
-        // Text align buttons
+        // Text align buttons (Field Properties panel)
         document.querySelectorAll('.align-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const activeObject = canvas.getActiveObject();
@@ -564,6 +652,19 @@
                 const align = this.dataset.align;
                 activeObject.set('textAlign', align);
                 canvas.renderAll();
+
+                // Update active state
+                document.querySelectorAll('.align-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Text align buttons (Add Field Modal)
+        document.querySelectorAll('.new-align-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Toggle active state
+                document.querySelectorAll('.new-align-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
             });
         });
 
@@ -625,32 +726,17 @@
                 });
         });
 
-        // Download preview as image
+        // Download preview as PDF with dummy data
         document.getElementById('download-preview-btn').addEventListener('click', function() {
-            // Deselect any active objects to remove selection borders
-            canvas.discardActiveObject();
-            canvas.renderAll();
+            const objects = canvas.getObjects().filter(obj => obj.type === 'i-text');
 
-            // Generate the image
-            const dataURL = canvas.toDataURL({
-                format: 'png',
-                quality: 1,
-                multiplier: 2 // Higher resolution (2x)
-            });
+            if (objects.length === 0) {
+                toastr.warning('No text fields to preview. Add at least one field first.');
+                return;
+            }
 
-            // Create download link
-            const link = document.createElement('a');
-            const templateName = '{{ Str::slug($template->name) }}';
-            const timestamp = new Date().getTime();
-            link.download = `${templateName}-preview-${timestamp}.png`;
-            link.href = dataURL;
-
-            // Trigger download
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            toastr.success('Preview downloaded successfully!');
+            // Redirect to preview endpoint which will generate and download the PDF
+            window.location.href = '{{ route("templates.preview", $template->id) }}';
         });
         // });
     </script>
