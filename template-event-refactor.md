@@ -1,19 +1,5 @@
 # Template-Event System Refactor
 
-## Table of Contents
-1. [Overview](#overview)
-2. [Current System vs New System](#current-system-vs-new-system)
-3. [Complete Workflow](#complete-workflow)
-4. [Database Schema Changes](#database-schema-changes)
-5. [Field Configuration Rules](#field-configuration-rules)
-6. [UI/UX Changes](#uiux-changes)
-7. [Backend Logic](#backend-logic)
-8. [Migration Strategy](#migration-strategy)
-9. [Examples & Use Cases](#examples--use-cases)
-
----
-
-## Overview
 
 ### Current Problem
 - Template fields and event registration fields are separate
@@ -86,19 +72,15 @@
 |------------|------------|--------------|--------------|----------|--------|
 | name | Text | ☑ | ☑ | ☑ | - (Predefined) |
 | email | Email | ☑ | ☐ | ☑ | - (Predefined) |
-| phone | Text | ☑ | ☐ | ☐ | - (Predefined) |
 | event_name | Text | ☐ | ☑ | - | - (Predefined) |
 | date | Date | ☐ | ☑ | - | - (Predefined) |
-| certificate_id | Text | ☐ | ☑ | - | - (Predefined) |
 | custom_field | Text | ☑ | ☑ | ☐ | [Remove] |
 
 **Predefined Fields** (No remove button):
 - `name` - Participant name
 - `email` - Contact email
-- `phone` - Contact phone
 - `event_name` - Event/course name
 - `date` - Event/completion date
-- `certificate_id` - Certificate number
 
 **Custom Fields** (User can add/remove):
 - User can add additional fields as needed
@@ -115,17 +97,12 @@
 - Date
 - Number
 - Textarea (multi-line)
-- Select (dropdown)
 
 #### Step 3: Position Fields on Canvas
 
 **Canvas Behavior:**
 - Only fields with "Show in Cert" = ☑ appear on Fabric.js canvas
-- User can drag, resize, style each field:
-  - Font family, size, color
-  - Text alignment (left, center, right)
-  - Bold, italic
-  - Rotation
+- remain the same with current
 
 **Example:**
 If template has these fields:
@@ -184,7 +161,7 @@ Preview of what public users will see:
 
 ### 3. Public Registration Flow
 
-**Public URL:** `/register/{event_slug}`
+**Public URL:** `/register/{id}`
 
 **Form Display:**
 - Only shows fields with `show_in_form` = YES from template
@@ -212,819 +189,1263 @@ Preview of what public users will see:
 
 ---
 
-### 4. Certificate Generation Flow
+## 4. Certificate Generation
 
-#### Data Merging Logic
+**Process:**
+1. Fetch registration data (form fields)
+2. Fetch event static values (non-form cert fields)
+3. Merge both datasets
+4. Apply to template positioning
+5. Generate PDF using certificate background + positioned text
 
-For each certificate, system merges:
-
-**Registration Data** (fields with `show_in_form` = YES):
-```json
-{
-  "name": "Christopher Johnson",
-  "email": "chris@example.com",
-  "phone": "123-456-7890"
-}
-```
-
-**Static Event Values** (fields with `show_in_form` = NO, `show_in_cert` = YES):
-```json
-{
-  "event_name": "Web Development Workshop 2025",
-  "date": "November 4, 2025",
-  "certificate_id": "CERT-2025-000123"
-}
-```
-
-**Final Certificate Data:**
-```json
-{
-  "name": "Christopher Johnson",
-  "event_name": "Web Development Workshop 2025",
-  "date": "November 4, 2025",
-  "certificate_id": "CERT-2025-000123"
-}
-```
-
-Note: `email` and `phone` are stored but not shown on certificate (since `show_in_cert` = NO)
-
----
-
-## Database Schema Changes
-
-### 1. Modify `template_fields` Table
-
-**Add New Columns:**
-
+**Data Merging Example:**
 ```php
-Schema::table('template_fields', function (Blueprint $table) {
-    $table->boolean('show_in_form')->default(true)->after('field_type');
-    $table->boolean('show_in_cert')->default(true)->after('show_in_form');
-    $table->boolean('is_required')->default(false)->after('show_in_cert');
-    $table->boolean('is_predefined')->default(false)->after('is_required');
-});
-```
+// Registration data (from form)
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "123-456-7890"
+}
 
-**Updated Schema:**
-```
-template_fields
-├─ id (uuid)
-├─ template_id (foreign key)
-├─ field_name (string)
-├─ field_type (string) - text, email, date, number, etc.
-├─ show_in_form (boolean) - default true
-├─ show_in_cert (boolean) - default true
-├─ is_required (boolean) - default false
-├─ is_predefined (boolean) - default false (no remove button if true)
-├─ x, y, width, height (decimal) - positioning
-├─ font_size, font_family, color (string) - styling
-├─ text_align (string) - left, center, right
-├─ bold, italic (boolean)
-├─ rotation (decimal)
-├─ timestamps
-└─ soft_deletes
+// Event static values
+{
+    "event_name": "Web Development Workshop 2025",
+    "date": "November 4, 2025"
+}
+
+// Merged certificate data
+{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "phone": "123-456-7890",
+    "event_name": "Web Development Workshop 2025",
+    "date": "November 4, 2025"
+}
 ```
 
 ---
 
-### 2. Create `event_field_values` Table
+## Technical Implementation Plan
 
-**Purpose:** Store static values for fields that don't appear in registration form
+### Phase 1: Database Schema & Models (Week 1)
 
-```php
-Schema::create('event_field_values', function (Blueprint $table) {
-    $table->uuid('id')->primary();
-    $table->foreignUuid('event_id')->constrained('events')->cascadeOnDelete();
-    $table->foreignUuid('template_field_id')->constrained('template_fields')->cascadeOnDelete();
-    $table->text('value'); // Static value for this event
+#### 1.1 Create `template_fields` Migration
+
+**File:** `database/migrations/YYYY_MM_DD_create_template_fields_table.php`
+
+```sql
+Schema::create('template_fields', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('template_id')->constrained()->onDelete('cascade');
+    $table->string('field_name'); // 'name', 'email', 'event_name', etc.
+    $table->string('field_label')->nullable(); // Display label
+    $table->enum('field_type', ['text', 'email', 'date', 'number', 'textarea']);
+    $table->boolean('show_in_form')->default(true);
+    $table->boolean('show_in_cert')->default(true);
+    $table->boolean('is_required')->default(false);
+    $table->boolean('is_predefined')->default(false); // Can't be deleted
+    $table->json('position_data')->nullable(); // x, y, fontSize, fontFamily, etc.
+    $table->integer('order')->default(0); // Display order
     $table->timestamps();
-
-    // Ensure one value per field per event
-    $table->unique(['event_id', 'template_field_id']);
+    
+    // Ensure unique field names per template
+    $table->unique(['template_id', 'field_name']);
 });
 ```
 
-**Schema:**
-```
-event_field_values
-├─ id (uuid)
-├─ event_id (foreign key → events)
-├─ template_field_id (foreign key → template_fields)
-├─ value (text) - The static value
-└─ timestamps
-```
+#### 1.2 Modify `events` Table Migration
 
-**Example Data:**
-```
-| ID | Event ID | Template Field ID | Value |
-|----|----------|-------------------|-------|
-| 1  | evt-123  | field-abc (event_name) | "Web Dev Workshop 2025" |
-| 2  | evt-123  | field-def (date) | "November 4, 2025" |
-```
+**File:** `database/migrations/YYYY_MM_DD_add_static_values_to_events.php`
 
----
-
-### 3. Deprecate `event_fields` Table
-
-**Current `event_fields` table:**
-- No longer needed
-- Template fields now define everything
-
-**Migration Strategy:**
-- Keep table for backward compatibility during transition
-- Mark as deprecated in documentation
-- Remove in future major version
-
----
-
-### 4. Update `registrations` Table
-
-**No changes needed** - continues to store JSON data
-
-```
-registrations
-├─ id (uuid)
-├─ event_id (foreign key)
-├─ data (json) - Contains values for fields with show_in_form = YES
-├─ status (string)
-└─ timestamps
-```
-
----
-
-## Field Configuration Rules
-
-### Toggle Combinations
-
-| Show in Form | Show in Cert | Required | Use Case | Example |
-|--------------|--------------|----------|----------|---------|
-| ☑ | ☑ | ☑ | Dynamic cert field (user fills) | Participant name |
-| ☑ | ☑ | ☐ | Optional dynamic field | Middle name |
-| ☑ | ☐ | ☑ | Contact info (not on cert) | Email, phone |
-| ☑ | ☐ | ☐ | Optional contact info | Additional notes |
-| ☐ | ☑ | - | Static cert field | Event name, date |
-| ☐ | ☐ | - | Invalid (field serves no purpose) | - |
-
----
-
-### Predefined Fields
-
-**System provides 6 predefined fields** (cannot be removed):
-
-1. **name** (Text)
-   - Default: Show in Form ☑, Show in Cert ☑, Required ☑
-   - Purpose: Participant/recipient name
-
-2. **email** (Email)
-   - Default: Show in Form ☑, Show in Cert ☐, Required ☑
-   - Purpose: Contact email for certificate delivery
-
-3. **phone** (Text)
-   - Default: Show in Form ☑, Show in Cert ☐, Required ☐
-   - Purpose: Contact phone (optional)
-
-4. **event_name** (Text)
-   - Default: Show in Form ☐, Show in Cert ☑
-   - Purpose: Event/course/workshop name
-
-5. **date** (Date)
-   - Default: Show in Form ☐, Show in Cert ☑
-   - Purpose: Event date or completion date
-
-6. **certificate_id** (Text)
-   - Default: Show in Form ☐, Show in Cert ☑
-   - Purpose: Unique certificate number (auto-generated)
-
-**User can:**
-- Toggle "Show in Form" / "Show in Cert" / "Required"
-- Modify field properties (font, color, position)
-- **Cannot:** Delete these fields
-
----
-
-### Custom Fields
-
-**User can add unlimited custom fields:**
-- Each has a "Remove" button
-- All toggle options available
-- Useful for specific use cases (organization name, grade, etc.)
-
----
-
-## UI/UX Changes
-
-### 1. Template Create/Edit Form
-
-#### Field Definition Section
-
-**HTML Structure:**
-```html
-<div class="card">
-    <div class="card-header">
-        <h3>Define Template Fields</h3>
-    </div>
-    <div class="card-body">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Field Name</th>
-                    <th>Type</th>
-                    <th>Show in Form</th>
-                    <th>Show in Cert</th>
-                    <th>Required</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="fields-list">
-                <!-- Predefined fields (no remove button) -->
-                <tr data-field="name" data-predefined="true">
-                    <td><input type="text" value="name" readonly /></td>
-                    <td>
-                        <select name="fields[0][type]">
-                            <option value="text" selected>Text</option>
-                        </select>
-                    </td>
-                    <td><input type="checkbox" name="fields[0][show_in_form]" checked /></td>
-                    <td><input type="checkbox" name="fields[0][show_in_cert]" checked /></td>
-                    <td><input type="checkbox" name="fields[0][is_required]" checked /></td>
-                    <td><span class="badge badge-light">Predefined</span></td>
-                </tr>
-                <!-- More predefined fields... -->
-
-                <!-- Custom fields (with remove button) -->
-                <tr data-field="custom-1" data-predefined="false">
-                    <td><input type="text" name="fields[6][name]" value="organization" /></td>
-                    <td>
-                        <select name="fields[6][type]">
-                            <option value="text" selected>Text</option>
-                        </select>
-                    </td>
-                    <td><input type="checkbox" name="fields[6][show_in_form]" /></td>
-                    <td><input type="checkbox" name="fields[6][show_in_cert]" checked /></td>
-                    <td><input type="checkbox" name="fields[6][is_required]" /></td>
-                    <td><button class="btn btn-sm btn-danger remove-field">Remove</button></td>
-                </tr>
-            </tbody>
-        </table>
-        <button type="button" class="btn btn-primary" id="add-field-btn">
-            <i class="ki-duotone ki-plus"></i> Add Custom Field
-        </button>
-    </div>
-</div>
-```
-
-**JavaScript Behavior:**
-```javascript
-// When "Show in Cert" checkbox changes
-$('.show-in-cert-checkbox').on('change', function() {
-    const fieldName = $(this).closest('tr').data('field');
-    const isChecked = $(this).is(':checked');
-
-    // Show/hide field on canvas
-    if (isChecked) {
-        addFieldToCanvas(fieldName);
-    } else {
-        removeFieldFromCanvas(fieldName);
-    }
-});
-
-// When "Show in Form" is unchecked, disable "Required"
-$('.show-in-form-checkbox').on('change', function() {
-    const requiredCheckbox = $(this).closest('tr').find('.required-checkbox');
-    if (!$(this).is(':checked')) {
-        requiredCheckbox.prop('checked', false).prop('disabled', true);
-    } else {
-        requiredCheckbox.prop('disabled', false);
-    }
+```sql
+Schema::table('events', function (Blueprint $table) {
+    $table->json('static_values')->nullable()->after('template_id');
+    // Store: {"event_name": "Workshop 2025", "date": "2025-11-04"}
 });
 ```
 
----
+#### 1.3 Create `TemplateField` Model
 
-### 2. Template Canvas (Fabric.js)
+**File:** `app/Models/TemplateField.php`
 
-**Filter Logic:**
-```javascript
-// Only show fields with show_in_cert = true
-function loadFieldsToCanvas(template) {
-    const fieldsToShow = template.fields.filter(field => field.show_in_cert);
-
-    fieldsToShow.forEach(field => {
-        // Add to Fabric.js canvas
-        addTextFieldToCanvas(field);
-    });
-}
-```
-
----
-
-### 3. Event Create/Edit Form
-
-#### Static Values Section
-
-**HTML Structure:**
-```html
-<div class="card" id="static-values-section" style="display: none;">
-    <div class="card-header">
-        <h3>Configure Static Certificate Values</h3>
-        <p class="text-muted">
-            These values will be the same for all certificates in this event
-        </p>
-    </div>
-    <div class="card-body" id="static-fields-container">
-        <!-- Dynamically loaded based on template -->
-    </div>
-</div>
-```
-
-**JavaScript - Load Static Fields:**
-```javascript
-$('#template_id').on('change', function() {
-    const templateId = $(this).val();
-
-    // Fetch template fields
-    $.get(`/api/templates/${templateId}/static-fields`, function(fields) {
-        // fields = template fields where show_in_form = false and show_in_cert = true
-
-        let html = '';
-        fields.forEach(field => {
-            html += `
-                <div class="mb-4">
-                    <label class="form-label">${field.field_name}</label>
-                    ${generateInputField(field)}
-                </div>
-            `;
-        });
-
-        $('#static-fields-container').html(html);
-        $('#static-values-section').show();
-    });
-});
-
-function generateInputField(field) {
-    switch(field.field_type) {
-        case 'date':
-            return `<input type="date" name="static_values[${field.id}]" class="form-control" />`;
-        case 'number':
-            return `<input type="number" name="static_values[${field.id}]" class="form-control" />`;
-        default:
-            return `<input type="text" name="static_values[${field.id}]" class="form-control" />`;
-    }
-}
-```
-
----
-
-### 4. Public Registration Form
-
-**Form Generation Logic:**
 ```php
-// RegistrationController.php
-public function show($slug)
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class TemplateField extends Model
 {
-    $event = Event::where('slug', $slug)->with('template.fields')->firstOrFail();
+    protected $fillable = [
+        'template_id',
+        'field_name',
+        'field_label',
+        'field_type',
+        'show_in_form',
+        'show_in_cert',
+        'is_required',
+        'is_predefined',
+        'position_data',
+        'order'
+    ];
 
-    // Get only fields with show_in_form = true
-    $formFields = $event->template->fields()
-        ->where('show_in_form', true)
-        ->get();
+    protected $casts = [
+        'show_in_form' => 'boolean',
+        'show_in_cert' => 'boolean',
+        'is_required' => 'boolean',
+        'is_predefined' => 'boolean',
+        'position_data' => 'array',
+    ];
 
-    return view('registration.form', compact('event', 'formFields'));
+    public function template()
+    {
+        return $this->belongsTo(Template::class);
+    }
+
+    // Scope: Only fields shown on certificate
+    public function scopeCertificateFields($query)
+    {
+        return $query->where('show_in_cert', true);
+    }
+
+    // Scope: Only fields shown in registration form
+    public function scopeFormFields($query)
+    {
+        return $query->where('show_in_form', true);
+    }
+
+    // Scope: Fields that need static values in events
+    public function scopeStaticValueFields($query)
+    {
+        return $query->where('show_in_form', false)
+                     ->where('show_in_cert', true);
+    }
 }
 ```
 
-**Blade Template:**
+#### 1.4 Update `Template` Model
+
+**File:** `app/Models/Template.php`
+
+```php
+// Add to existing Template model
+
+public function fields()
+{
+    return $this->hasMany(TemplateField::class)->orderBy('order');
+}
+
+public function formFields()
+{
+    return $this->fields()->formFields();
+}
+
+public function certFields()
+{
+    return $this->fields()->certificateFields();
+}
+
+public function staticValueFields()
+{
+    return $this->fields()->staticValueFields();
+}
+
+// Initialize predefined fields when creating template
+public static function boot()
+{
+    parent::boot();
+    
+    static::created(function ($template) {
+        $predefinedFields = [
+            [
+                'field_name' => 'name',
+                'field_label' => 'Participant Name',
+                'field_type' => 'text',
+                'show_in_form' => true,
+                'show_in_cert' => true,
+                'is_required' => true,
+                'is_predefined' => true,
+                'order' => 1
+            ],
+            [
+                'field_name' => 'email',
+                'field_label' => 'Email Address',
+                'field_type' => 'email',
+                'show_in_form' => true,
+                'show_in_cert' => false,
+                'is_required' => true,
+                'is_predefined' => true,
+                'order' => 2
+            ],
+            [
+                'field_name' => 'event_name',
+                'field_label' => 'Event Name',
+                'field_type' => 'text',
+                'show_in_form' => false,
+                'show_in_cert' => true,
+                'is_required' => false,
+                'is_predefined' => true,
+                'order' => 3
+            ],
+            [
+                'field_name' => 'date',
+                'field_label' => 'Event Date',
+                'field_type' => 'date',
+                'show_in_form' => false,
+                'show_in_cert' => true,
+                'is_required' => false,
+                'is_predefined' => true,
+                'order' => 4
+            ]
+        ];
+        
+        foreach ($predefinedFields as $field) {
+            $template->fields()->create($field);
+        }
+    });
+}
+```
+
+#### 1.5 Update `Event` Model
+
+**File:** `app/Models/Event.php`
+
+```php
+// Add to existing Event model
+
+protected $casts = [
+    'static_values' => 'array',
+];
+
+public function template()
+{
+    return $this->belongsTo(Template::class);
+}
+
+// Get certificate data for a registration
+public function getCertificateData(Registration $registration)
+{
+    return array_merge(
+        $this->static_values ?? [],
+        $registration->form_data ?? []
+    );
+}
+
+// Get fields that need static values
+public function getStaticValueFields()
+{
+    if (!$this->template) {
+        return collect();
+    }
+    
+    return $this->template->staticValueFields;
+}
+
+// Validate static values against template
+public function validateStaticValues(array $staticValues)
+{
+    $requiredFields = $this->getStaticValueFields()
+        ->pluck('field_name')
+        ->toArray();
+    
+    foreach ($requiredFields as $field) {
+        if (!isset($staticValues[$field]) || empty($staticValues[$field])) {
+            throw new \Exception("Static value for '{$field}' is required.");
+        }
+    }
+    
+    return true;
+}
+```
+
+#### 1.6 Update `Registration` Model
+
+**File:** `app/Models/Registration.php`
+
+```php
+// Add to existing Registration model
+
+protected $casts = [
+    'form_data' => 'array',
+];
+
+// Validate registration data against template fields
+public function validateAgainstTemplate()
+{
+    if (!$this->event || !$this->event->template) {
+        throw new \Exception('Event or template not found.');
+    }
+    
+    $formFields = $this->event->template->formFields;
+    $formData = $this->form_data ?? [];
+    
+    foreach ($formFields as $field) {
+        if ($field->is_required) {
+            if (!isset($formData[$field->field_name]) || empty($formData[$field->field_name])) {
+                throw new \Exception("Field '{$field->field_label}' is required.");
+            }
+        }
+    }
+    
+    return true;
+}
+
+// Get complete certificate data (form data + static values)
+public function getCertificateData()
+{
+    if (!$this->event) {
+        throw new \Exception('Event not found.');
+    }
+    
+    return $this->event->getCertificateData($this);
+}
+```
+
+---
+
+### Phase 2: Backend Services (Week 2)
+
+#### 2.1 Create `TemplateFieldService`
+
+**File:** `app/Services/TemplateFieldService.php`
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\Template;
+use App\Models\TemplateField;
+
+class TemplateFieldService
+{
+    /**
+     * Add custom field to template
+     */
+    public function addCustomField(Template $template, array $fieldData)
+    {
+        // Validate field name is unique
+        $exists = $template->fields()
+            ->where('field_name', $fieldData['field_name'])
+            ->exists();
+            
+        if ($exists) {
+            throw new \Exception('Field name already exists in this template.');
+        }
+        
+        // Get next order number
+        $maxOrder = $template->fields()->max('order');
+        $fieldData['order'] = $maxOrder + 1;
+        $fieldData['is_predefined'] = false;
+        
+        return $template->fields()->create($fieldData);
+    }
+    
+    /**
+     * Update field properties (toggles, type, etc.)
+     */
+    public function updateField(TemplateField $field, array $data)
+    {
+        // Prevent changing predefined field names
+        if ($field->is_predefined && isset($data['field_name'])) {
+            unset($data['field_name']);
+        }
+        
+        $field->update($data);
+        return $field->fresh();
+    }
+    
+    /**
+     * Update field position on canvas
+     */
+    public function updateFieldPosition(TemplateField $field, array $positionData)
+    {
+        $field->position_data = $positionData;
+        $field->save();
+        
+        return $field;
+    }
+    
+    /**
+     * Delete custom field (cannot delete predefined)
+     */
+    public function deleteField(TemplateField $field)
+    {
+        if ($field->is_predefined) {
+            throw new \Exception('Cannot delete predefined field.');
+        }
+        
+        return $field->delete();
+    }
+    
+    /**
+     * Reorder fields
+     */
+    public function reorderFields(Template $template, array $fieldOrder)
+    {
+        // $fieldOrder = [field_id => new_order]
+        foreach ($fieldOrder as $fieldId => $order) {
+            $template->fields()
+                ->where('id', $fieldId)
+                ->update(['order' => $order]);
+        }
+    }
+    
+    /**
+     * Get fields for canvas (show_in_cert = true)
+     */
+    public function getCanvasFields(Template $template)
+    {
+        return $template->certFields()
+            ->orderBy('order')
+            ->get();
+    }
+    
+    /**
+     * Get fields for registration form (show_in_form = true)
+     */
+    public function getFormFields(Template $template)
+    {
+        return $template->formFields()
+            ->orderBy('order')
+            ->get();
+    }
+}
+```
+
+#### 2.2 Create `EventConfigurationService`
+
+**File:** `app/Services/EventConfigurationService.php`
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\Event;
+use App\Models\Template;
+
+class EventConfigurationService
+{
+    /**
+     * Get static value fields for event based on template
+     */
+    public function getStaticValueFields(Template $template)
+    {
+        return $template->staticValueFields()
+            ->orderBy('order')
+            ->get();
+    }
+    
+    /**
+     * Validate and save static values
+     */
+    public function saveStaticValues(Event $event, array $staticValues)
+    {
+        // Validate all required static fields are provided
+        $event->validateStaticValues($staticValues);
+        
+        $event->static_values = $staticValues;
+        $event->save();
+        
+        return $event;
+    }
+    
+    /**
+     * Get preview of registration form
+     */
+    public function getRegistrationFormPreview(Event $event)
+    {
+        if (!$event->template) {
+            throw new \Exception('Event template not found.');
+        }
+        
+        return $event->template->formFields()
+            ->orderBy('order')
+            ->get()
+            ->map(function ($field) {
+                return [
+                    'name' => $field->field_name,
+                    'label' => $field->field_label,
+                    'type' => $field->field_type,
+                    'required' => $field->is_required,
+                ];
+            });
+    }
+}
+```
+
+#### 2.3 Update `CertificateService`
+
+**File:** `app/Services/CertificateService.php`
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\Registration;
+use App\Models\Certificate;
+
+class CertificateService
+{
+    /**
+     * Generate certificate for registration
+     */
+    public function generateCertificate(Registration $registration)
+    {
+        // Get merged data (registration + static values)
+        $certificateData = $registration->getCertificateData();
+        
+        // Get template with field positions
+        $template = $registration->event->template;
+        
+        if (!$template) {
+            throw new \Exception('Template not found.');
+        }
+        
+        // Get certificate fields with positions
+        $certFields = $template->certFields;
+        
+        // Generate PDF using template background + positioned data
+        $pdfPath = $this->renderCertificatePDF($template, $certFields, $certificateData);
+        
+        // Create certificate record
+        $certificate = Certificate::create([
+            'registration_id' => $registration->id,
+            'event_id' => $registration->event_id,
+            'certificate_number' => $this->generateCertificateNumber($registration->event),
+            'certificate_data' => $certificateData,
+            'pdf_path' => $pdfPath,
+            'issued_at' => now(),
+        ]);
+        
+        return $certificate;
+    }
+    
+    /**
+     * Render PDF with positioned fields
+     */
+    private function renderCertificatePDF($template, $fields, $data)
+    {
+        // Use existing PDF library (DomPDF, TCPDF, etc.)
+        // Position text on certificate background based on field position_data
+        
+        $pdf = app('dompdf.wrapper');
+        $html = view('pdf.certificate', [
+            'template' => $template,
+            'fields' => $fields,
+            'data' => $data
+        ])->render();
+        
+        $pdf->loadHTML($html);
+        $filename = 'certificate_' . uniqid() . '.pdf';
+        $path = storage_path('app/certificates/' . $filename);
+        
+        $pdf->save($path);
+        
+        return 'certificates/' . $filename;
+    }
+    
+    /**
+     * Generate unique certificate number
+     */
+    private function generateCertificateNumber($event)
+    {
+        $prefix = 'CERT-' . date('Y') . '-';
+        $count = Certificate::where('event_id', $event->id)->count() + 1;
+        
+        return $prefix . str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
+    
+    /**
+     * Bulk generate certificates for event
+     */
+    public function bulkGenerateCertificates(Event $event)
+    {
+        $registrations = $event->registrations()
+            ->whereDoesntHave('certificate')
+            ->get();
+        
+        $generated = [];
+        
+        foreach ($registrations as $registration) {
+            try {
+                $certificate = $this->generateCertificate($registration);
+                $generated[] = $certificate;
+            } catch (\Exception $e) {
+                \Log::error('Certificate generation failed: ' . $e->getMessage());
+            }
+        }
+        
+        return $generated;
+    }
+}
+```
+
+---
+
+### Phase 3: Controller Updates (Week 3)
+
+#### 3.1 Update `TemplateController`
+
+**Key Changes:**
+```php
+// Create template with predefined fields auto-initialized
+public function store(Request $request)
+{
+    $template = Template::create([
+        'name' => $request->name,
+        'background_image' => $request->file('background')->store('templates'),
+        'is_default' => $request->is_default ?? false,
+    ]);
+    
+    // Predefined fields already created via Template::boot()
+    
+    return response()->json($template->load('fields'));
+}
+
+// Add custom field
+public function addField(Request $request, Template $template)
+{
+    $fieldService = app(TemplateFieldService::class);
+    
+    $field = $fieldService->addCustomField($template, $request->validated());
+    
+    return response()->json($field);
+}
+
+// Update field toggles/properties
+public function updateField(Request $request, TemplateField $field)
+{
+    $fieldService = app(TemplateFieldService::class);
+    
+    $field = $fieldService->updateField($field, $request->validated());
+    
+    return response()->json($field);
+}
+
+// Update field position on canvas
+public function updateFieldPosition(Request $request, TemplateField $field)
+{
+    $fieldService = app(TemplateFieldService::class);
+    
+    $field = $fieldService->updateFieldPosition($field, $request->position_data);
+    
+    return response()->json($field);
+}
+
+// Delete custom field
+public function deleteField(TemplateField $field)
+{
+    $fieldService = app(TemplateFieldService::class);
+    
+    $fieldService->deleteField($field);
+    
+    return response()->json(['message' => 'Field deleted']);
+}
+
+// Get canvas fields only
+public function getCanvasFields(Template $template)
+{
+    $fieldService = app(TemplateFieldService::class);
+    
+    return response()->json($fieldService->getCanvasFields($template));
+}
+```
+
+#### 3.2 Update `EventController`
+
+**Key Changes:**
+```php
+// Show create form with template selection
+public function create()
+{
+    $templates = Template::with('fields')->get();
+    
+    return view('events.create', compact('templates'));
+}
+
+// Store event with static values
+public function store(Request $request)
+{
+    $request->validate([
+        'name' => 'required',
+        'description' => 'required',
+        'template_id' => 'required|exists:templates,id',
+        'static_values' => 'required|array',
+    ]);
+    
+    $event = Event::create([
+        'name' => $request->name,
+        'description' => $request->description,
+        'slug' => Str::slug($request->slug ?? $request->name),
+        'template_id' => $request->template_id,
+    ]);
+    
+    // Save static values
+    $configService = app(EventConfigurationService::class);
+    $configService->saveStaticValues($event, $request->static_values);
+    
+    return redirect()->route('events.show', $event);
+}
+
+// Get static value fields via AJAX when template is selected
+public function getStaticValueFields(Template $template)
+{
+    $configService = app(EventConfigurationService::class);
+    
+    return response()->json($configService->getStaticValueFields($template));
+}
+
+// Get registration form preview
+public function getRegistrationFormPreview(Event $event)
+{
+    $configService = app(EventConfigurationService::class);
+    
+    return response()->json($configService->getRegistrationFormPreview($event));
+}
+```
+
+#### 3.3 Update `RegistrationController`
+
+**Key Changes:**
+```php
+// Show public registration form
+public function create($eventSlug)
+{
+    $event = Event::where('slug', $eventSlug)
+        ->with(['template.formFields'])
+        ->firstOrFail();
+    
+    if (!$event->is_registration_active) {
+        abort(403, 'Registration is currently closed.');
+    }
+    
+    $formFields = $event->template->formFields()
+        ->orderBy('order')
+        ->get();
+    
+    return view('registrations.create', compact('event', 'formFields'));
+}
+
+// Store registration with validation
+public function store(Request $request, $eventSlug)
+{
+    $event = Event::where('slug', $eventSlug)->firstOrFail();
+    
+    if (!$event->is_registration_active) {
+        abort(403, 'Registration is currently closed.');
+    }
+    
+    // Build dynamic validation rules from template fields
+    $rules = [];
+    $formFields = $event->template->formFields;
+    
+    foreach ($formFields as $field) {
+        $fieldRules = [];
+        
+        if ($field->is_required) {
+            $fieldRules[] = 'required';
+        }
+        
+        // Add type-specific validation
+        if ($field->field_type === 'email') {
+            $fieldRules[] = 'email';
+        } elseif ($field->field_type === 'date') {
+            $fieldRules[] = 'date';
+        } elseif ($field->field_type === 'number') {
+            $fieldRules[] = 'numeric';
+        }
+        
+        $rules[$field->field_name] = implode('|', $fieldRules);
+    }
+    
+    $validated = $request->validate($rules);
+    
+    // Create registration
+    $registration = Registration::create([
+        'event_id' => $event->id,
+        'form_data' => $validated,
+    ]);
+    
+    return redirect()->route('registrations.success', $registration->id);
+}
+```
+
+#### 3.4 Update `CertificateController`
+
+**Key Changes:**
+```php
+// Generate single certificate
+public function generate(Registration $registration)
+{
+    $certificateService = app(CertificateService::class);
+    
+    $certificate = $certificateService->generateCertificate($registration);
+    
+    return response()->json($certificate);
+}
+
+// Generate all certificates for event
+public function bulkGenerate(Event $event)
+{
+    $certificateService = app(CertificateService::class);
+    
+    $certificates = $certificateService->bulkGenerateCertificates($event);
+    
+    return response()->json([
+        'message' => count($certificates) . ' certificates generated',
+        'certificates' => $certificates
+    ]);
+}
+
+// Download certificate
+public function download(Certificate $certificate)
+{
+    return response()->download(storage_path('app/' . $certificate->pdf_path));
+}
+```
+
+---
+
+### Phase 4: Frontend Implementation (Week 4)
+
+#### 4.1 Template Builder UI
+
+**File:** `resources/views/templates/create.blade.php` (or Vue component)
+
+**Components Needed:**
+1. **Field Definition Table**
+   - Display predefined fields (no remove button)
+   - Display custom fields (with remove button)
+   - Add new field button
+   - Checkboxes for: Show in Form, Show in Cert, Required
+   - Field type dropdown
+
+2. **Canvas Area (Fabric.js)**
+   - Load only fields with `show_in_cert = true`
+   - Allow drag-drop positioning
+   - Font size/family controls
+   - Save positions to `position_data`
+
+3. **JavaScript Logic:**
+```javascript
+// When toggles change, sync with canvas
+document.querySelectorAll('.show-in-cert-toggle').forEach(toggle => {
+    toggle.addEventListener('change', function() {
+        const fieldName = this.dataset.fieldName;
+        const showInCert = this.checked;
+        
+        if (showInCert) {
+            addFieldToCanvas(fieldName);
+        } else {
+            removeFieldFromCanvas(fieldName);
+        }
+    });
+});
+
+// Save field positions
+canvas.on('object:modified', function(e) {
+    const field = e.target;
+    const fieldId = field.fieldId;
+    
+    saveFieldPosition(fieldId, {
+        x: field.left,
+        y: field.top,
+        fontSize: field.fontSize,
+        fontFamily: field.fontFamily,
+        color: field.fill
+    });
+});
+```
+
+#### 4.2 Event Creation UI
+
+**File:** `resources/views/events/create.blade.php`
+
+**Components Needed:**
+1. **Basic Information Form**
+   - Event name, description, slug
+   - Template dropdown
+
+2. **Static Values Form (AJAX-loaded)**
+```javascript
+// When template is selected
+document.getElementById('template_id').addEventListener('change', function() {
+    const templateId = this.value;
+    
+    fetch(`/api/templates/${templateId}/static-value-fields`)
+        .then(res => res.json())
+        .then(fields => {
+            renderStaticValueForm(fields);
+        });
+});
+
+function renderStaticValueForm(fields) {
+    const container = document.getElementById('static-values-container');
+    container.innerHTML = '';
+    
+    fields.forEach(field => {
+        const input = createInputElement(field);
+        container.appendChild(input);
+    });
+}
+```
+
+3. **Registration Form Preview**
+```javascript
+// Show preview of public form
+fetch(`/api/events/${eventId}/registration-form-preview`)
+    .then(res => res.json())
+    .then(fields => {
+        renderFormPreview(fields);
+    });
+```
+
+#### 4.3 Public Registration Form
+
+**File:** `resources/views/registrations/create.blade.php`
+
+**Dynamic Form Rendering:**
 ```blade
-<form method="POST" action="{{ route('register.store', $event->slug) }}">
+<form method="POST" action="{{ route('registrations.store', $event->slug) }}">
     @csrf
-
+    
+    <h2>Register for: {{ $event->name }}</h2>
+    
     @foreach($formFields as $field)
-        <div class="mb-3">
-            <label class="form-label">
-                {{ ucfirst($field->field_name) }}
-                @if($field->is_required) <span class="text-danger">*</span> @endif
+        <div class="form-group">
+            <label for="{{ $field->field_name }}">
+                {{ $field->field_label }}
+                @if($field->is_required) <span class="required">*</span> @endif
             </label>
-
+            
             @if($field->field_type === 'textarea')
-                <textarea
-                    name="data[{{ $field->field_name }}]"
-                    class="form-control"
-                    @if($field->is_required) required @endif
+                <textarea 
+                    name="{{ $field->field_name }}" 
+                    id="{{ $field->field_name }}"
+                    {{ $field->is_required ? 'required' : '' }}
                 ></textarea>
-            @elseif($field->field_type === 'date')
-                <input
-                    type="date"
-                    name="data[{{ $field->field_name }}]"
-                    class="form-control"
-                    @if($field->is_required) required @endif
-                />
             @else
-                <input
-                    type="{{ $field->field_type }}"
-                    name="data[{{ $field->field_name }}]"
-                    class="form-control"
-                    @if($field->is_required) required @endif
-                />
+                <input 
+                    type="{{ $field->field_type }}" 
+                    name="{{ $field->field_name }}"
+                    id="{{ $field->field_name }}"
+                    {{ $field->is_required ? 'required' : '' }}
+                >
             @endif
+            
+            @error($field->field_name)
+                <span class="error">{{ $message }}</span>
+            @enderror
         </div>
     @endforeach
-
-    <button type="submit" class="btn btn-primary">Submit Registration</button>
+    
+    <button type="submit">Submit Registration</button>
 </form>
 ```
 
 ---
 
-## Backend Logic
+## Timeline Summary
 
-### 1. Template Controller
+| Phase | Duration | Key Deliverables |
+|-------|----------|------------------|
+| Phase 1: Database & Models | 3-5 days | Migrations, models, relationships |
+| Phase 2: Backend Services | 5-7 days | Service classes, business logic |
+| Phase 3: Controllers | 4-6 days | API endpoints, controller updates |
+| Phase 4: Frontend | 7-10 days | UI components, JavaScript logic |
 
-#### Store Method
-```php
-public function store(Request $request)
-{
-    // Validate
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'background' => 'required|image|max:5120',
-        'fields' => 'required|array',
-        'fields.*.field_name' => 'required|string',
-        'fields.*.field_type' => 'required|string',
-        'fields.*.show_in_form' => 'boolean',
-        'fields.*.show_in_cert' => 'boolean',
-        'fields.*.is_required' => 'boolean',
-        // ... positioning and styling fields
-    ]);
-
-    // Create template
-    $template = Template::create([
-        'name' => $validated['name'],
-        'background' => $request->file('background')->store('templates', 'public'),
-        'created_by' => auth()->id(),
-    ]);
-
-    // Create fields
-    foreach ($validated['fields'] as $fieldData) {
-        $template->fields()->create($fieldData);
-    }
-
-    return redirect()->route('templates.index');
-}
-```
-
----
-
-### 2. Event Controller
-
-#### Store Method
-```php
-public function store(Request $request)
-{
-    // Validate
-    $validated = $request->validate([
-        'name' => 'required|string|max:255',
-        'template_id' => 'required|exists:templates,id',
-        'static_values' => 'array',
-        'static_values.*' => 'nullable|string',
-    ]);
-
-    // Create event
-    $event = Event::create([
-        'name' => $validated['name'],
-        'slug' => Str::slug($validated['name']),
-        'template_id' => $validated['template_id'],
-        'created_by' => auth()->id(),
-    ]);
-
-    // Store static values
-    if (isset($validated['static_values'])) {
-        foreach ($validated['static_values'] as $fieldId => $value) {
-            EventFieldValue::create([
-                'event_id' => $event->id,
-                'template_field_id' => $fieldId,
-                'value' => $value,
-            ]);
-        }
-    }
-
-    return redirect()->route('events.index');
-}
-```
-
----
-
-### 3. Certificate Service
-
-#### Generate Method
-```php
-public function generateCertificate(Event $event, Registration $registration)
-{
-    // Get template fields that appear on certificate
-    $templateFields = $event->template->fields()
-        ->where('show_in_cert', true)
-        ->get();
-
-    // Merge data sources
-    $certificateData = [];
-
-    foreach ($templateFields as $field) {
-        if ($field->show_in_form) {
-            // Get value from registration data
-            $certificateData[$field->field_name] = $registration->data[$field->field_name] ?? '';
-        } else {
-            // Get value from event static values
-            $staticValue = EventFieldValue::where('event_id', $event->id)
-                ->where('template_field_id', $field->id)
-                ->first();
-
-            $certificateData[$field->field_name] = $staticValue?->value ?? '';
-        }
-    }
-
-    // Auto-generate certificate_id if not set
-    if (isset($certificateData['certificate_id']) && empty($certificateData['certificate_id'])) {
-        $certificateData['certificate_id'] = $this->generateCertificateNumber();
-    }
-
-    // Generate PDF
-    $pdf = $this->generatePDF($event->template, $certificateData);
-
-    // Generate QR code
-    $qrCode = $this->generateQRCode($certificateData['certificate_id']);
-
-    // Store certificate
-    return Certificate::create([
-        'event_id' => $event->id,
-        'registration_id' => $registration->id,
-        'certificate_number' => $certificateData['certificate_id'],
-        'pdf_path' => $pdf,
-        'qr_code' => $qrCode,
-        'generated_by' => auth()->id(),
-    ]);
-}
-```
-
----
-
-## Migration Strategy
-
-### Option 1: Fresh Migration (Recommended for Development)
-
-**Create new migration:**
-`2025_11_04_update_template_fields_add_toggles.php`
-
-```php
-public function up()
-{
-    Schema::table('template_fields', function (Blueprint $table) {
-        $table->boolean('show_in_form')->default(true)->after('field_type');
-        $table->boolean('show_in_cert')->default(true)->after('show_in_form');
-        $table->boolean('is_required')->default(false)->after('show_in_cert');
-        $table->boolean('is_predefined')->default(false)->after('is_required');
-    });
-}
-```
-
-**Create new migration:**
-`2025_11_04_create_event_field_values_table.php`
-
-```php
-public function up()
-{
-    Schema::create('event_field_values', function (Blueprint $table) {
-        $table->uuid('id')->primary();
-        $table->foreignUuid('event_id')->constrained('events')->cascadeOnDelete();
-        $table->foreignUuid('template_field_id')->constrained('template_fields')->cascadeOnDelete();
-        $table->text('value');
-        $table->timestamps();
-
-        $table->unique(['event_id', 'template_field_id']);
-    });
-}
-```
-
-**Run:**
-```bash
-php artisan migrate:fresh --seed
-```
-
----
-
-### Option 2: Data Migration (Production)
-
-**Step 1: Add columns**
-```bash
-php artisan migrate
-```
-
-**Step 2: Migrate existing data**
-```php
-// Database seeder or artisan command
-public function migrateExistingTemplates()
-{
-    $templates = Template::with('fields')->get();
-
-    foreach ($templates as $template) {
-        foreach ($template->fields as $field) {
-            // Set defaults
-            $field->update([
-                'show_in_form' => true,
-                'show_in_cert' => true,
-                'is_required' => false,
-                'is_predefined' => in_array($field->field_name, [
-                    'name', 'email', 'phone', 'event_name', 'date', 'certificate_id'
-                ]),
-            ]);
-        }
-    }
-}
-```
-
-**Step 3: Migrate event fields to static values**
-```php
-public function migrateEventFields()
-{
-    $events = Event::with('fields', 'template.fields')->get();
-
-    foreach ($events as $event) {
-        // Match event_fields to template_fields
-        foreach ($event->fields as $eventField) {
-            $templateField = $event->template->fields()
-                ->where('field_name', $eventField->field_name)
-                ->first();
-
-            if ($templateField) {
-                // This was in event form, so it should show in form
-                $templateField->update(['show_in_form' => true]);
-            }
-        }
-    }
-}
-```
-
----
-
-## Examples & Use Cases
-
-### Example 1: Workshop Certificate
-
-**Template: "Workshop Certificate"**
-
-| Field Name | Type | Show in Form | Show in Cert | Required | Notes |
-|------------|------|--------------|--------------|----------|-------|
-| name | Text | ☑ | ☑ | ☑ | Each participant enters |
-| email | Email | ☑ | ☐ | ☑ | For delivery |
-| phone | Text | ☑ | ☐ | ☐ | Optional contact |
-| event_name | Text | ☐ | ☑ | - | Set per event |
-| date | Date | ☐ | ☑ | - | Set per event |
-| certificate_id | Text | ☐ | ☑ | - | Auto-generated |
-
-**Event: "Web Development 2025"**
-
-Static values:
-- event_name: "Web Development Workshop 2025"
-- date: "November 4, 2025"
-
-**Registration Form (Public):**
-- Name: [_____] *
-- Email: [_____] *
-- Phone: [_____]
-
-**Certificate Shows:**
-- Christopher Johnson (from registration)
-- Web Development Workshop 2025 (from event)
-- November 4, 2025 (from event)
-- CERT-2025-000123 (auto-generated)
-
----
-
-### Example 2: Academic Certificate with Grade
-
-**Template: "Course Completion"**
-
-| Field Name | Type | Show in Form | Show in Cert | Required | Notes |
-|------------|------|--------------|--------------|----------|-------|
-| name | Text | ☑ | ☑ | ☑ | Student name |
-| email | Email | ☑ | ☐ | ☑ | Contact |
-| grade | Select | ☑ | ☑ | ☑ | A, B, C, D, F |
-| course_name | Text | ☐ | ☑ | - | Static |
-| instructor | Text | ☐ | ☑ | - | Static |
-| date | Date | ☐ | ☑ | - | Static |
-
-**Event: "Advanced JavaScript"**
-
-Static values:
-- course_name: "Advanced JavaScript Programming"
-- instructor: "Dr. Jane Smith"
-- date: "December 15, 2025"
-
-**Registration + Grade Entry:**
-- Name: [_____] *
-- Email: [_____] *
-- Grade: [A ▼] * (dropdown)
-
-**Certificate Shows:**
-- Student Name
-- Advanced JavaScript Programming
-- Grade: A
-- Instructor: Dr. Jane Smith
-- December 15, 2025
-
----
-
-### Example 3: Complex Event with Organization
-
-**Template: "Professional Training"**
-
-| Field Name | Type | Show in Form | Show in Cert | Required | Notes |
-|------------|------|--------------|--------------|----------|-------|
-| name | Text | ☑ | ☑ | ☑ | Participant |
-| email | Email | ☑ | ☐ | ☑ | Contact |
-| organization | Text | ☑ | ☑ | ☑ | Company name |
-| job_title | Text | ☑ | ☐ | ☐ | For records |
-| event_name | Text | ☐ | ☑ | - | Static |
-| trainer | Text | ☐ | ☑ | - | Static |
-| hours | Number | ☐ | ☑ | - | Static |
-| date | Date | ☐ | ☑ | - | Static |
-
-**Event: "Project Management Training"**
-
-Static values:
-- event_name: "Project Management Professional Training"
-- trainer: "Sarah Johnson, PMP"
-- hours: "40"
-- date: "October 2025"
-
-**Registration Form:**
-- Name: [_____] *
-- Email: [_____] *
-- Organization: [_____] *
-- Job Title: [_____]
-
-**Certificate Shows:**
-- Christopher Johnson (from registration)
-- ABC Corporation (from registration)
-- Project Management Professional Training (static)
-- Sarah Johnson, PMP (static)
-- 40 Hours (static)
-- October 2025 (static)
+**TOTAL ESTIMATED TIME: 3-4 weeks (fresh database, no migration needed)**
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Database
-- [ ] Create migration for `template_fields` new columns
-- [ ] Create migration for `event_field_values` table
-- [ ] Run migrations
-- [ ] Update models (Template, TemplateField, Event, EventFieldValue)
-- [ ] Add relationships between models
+### Phase 1: Database & Models ✅
+- [ ] Create `template_fields` migration
+- [ ] Add `static_values` column to `events` table
+- [ ] Create `TemplateField` model with scopes
+- [ ] Update `Template` model with relationships and boot() method
+- [ ] Update `Event` model with static_values casting and methods
+- [ ] Update `Registration` model with validation methods
+- [ ] Test all model relationships in Tinker
 
-### Phase 2: Template System
-- [ ] Update template create form (field definition table)
-- [ ] Add predefined fields with no remove button
-- [ ] Add "Add Custom Field" functionality
-- [ ] Update canvas to filter show_in_cert fields only
-- [ ] Update save logic to include new columns
+### Phase 2: Backend Services ✅
+- [ ] Create `TemplateFieldService.php`
+  - [ ] addCustomField()
+  - [ ] updateField()
+  - [ ] updateFieldPosition()
+  - [ ] deleteField()
+  - [ ] getCanvasFields()
+  - [ ] getFormFields()
+- [ ] Create `EventConfigurationService.php`
+  - [ ] getStaticValueFields()
+  - [ ] saveStaticValues()
+  - [ ] getRegistrationFormPreview()
+- [ ] Update `CertificateService.php`
+  - [ ] generateCertificate() with data merging
+  - [ ] renderCertificatePDF()
+  - [ ] bulkGenerateCertificates()
 
-### Phase 3: Event System
-- [ ] Update event create form
-- [ ] Add template selector with field loading
-- [ ] Add static values section (dynamic based on template)
-- [ ] Update EventController store method
-- [ ] Store static values in event_field_values table
+### Phase 3: Controllers ✅
+- [ ] Update `TemplateController`
+  - [ ] store() - create with predefined fields
+  - [ ] addField() - add custom field
+  - [ ] updateField() - update field properties
+  - [ ] updateFieldPosition() - save canvas positions
+  - [ ] deleteField() - remove custom field
+  - [ ] getCanvasFields() - fetch cert fields
+- [ ] Update `EventController`
+  - [ ] create() - show template selection
+  - [ ] store() - save with static values
+  - [ ] getStaticValueFields() - AJAX endpoint
+  - [ ] getRegistrationFormPreview() - form preview
+- [ ] Update `RegistrationController`
+  - [ ] create() - dynamic form rendering
+  - [ ] store() - dynamic validation
+- [ ] Update `CertificateController`
+  - [ ] generate() - single certificate
+  - [ ] bulkGenerate() - all certificates
+  - [ ] download() - PDF download
 
-### Phase 4: Registration
-- [ ] Update public registration form generation
-- [ ] Filter fields by show_in_form = true
-- [ ] Apply is_required validation
-- [ ] Test form submission
-
-### Phase 5: Certificate Generation
-- [ ] Update CertificateService
-- [ ] Implement data merging logic (registration + static)
-- [ ] Handle certificate_id auto-generation
-- [ ] Update PDF generation to use merged data
-- [ ] Test with various field combinations
-
-### Phase 6: Testing
-- [ ] Test template creation with various field configs
-- [ ] Test event creation with static values
-- [ ] Test public registration form
-- [ ] Test certificate generation
-- [ ] Test edge cases (all static, all dynamic, mixed)
+### Phase 4: Frontend ✅
+- [ ] **Template Builder Page**
+  - [ ] Field definition table component
+  - [ ] Add custom field form
+  - [ ] Toggle switches (Show in Form, Show in Cert, Required)
+  - [ ] Fabric.js canvas integration
+  - [ ] Sync table checkboxes with canvas
+  - [ ] Save field positions on drag
+  - [ ] Delete custom field button
+- [ ] **Event Creation Page**
+  - [ ] Template dropdown
+  - [ ] AJAX load static value fields
+  - [ ] Dynamic static values form
+  - [ ] Registration form preview panel
+  - [ ] Enable/Disable registration toggle
+- [ ] **Public Registration Page**
+  - [ ] Dynamic form field rendering
+  - [ ] Field type handling (text, email, date, textarea, number)
+  - [ ] Client-side validation
+  - [ ] Required field indicators
+- [ ] **Certificate Preview/Download**
+  - [ ] Certificate list with download links
+  - [ ] Bulk generation button
+  - [ ] Generation status indicators
 
 ---
 
-## Notes
+## Quick Start Guide
 
-- Keep backward compatibility during transition period
-- Validate that at least one field has show_in_cert = true (template must show something)
-- Consider adding field order/sort for form display
-- Future enhancement: Field dependencies (show field X only if field Y = value)
+### Step 1: Run Migrations (Day 1)
+```bash
+php artisan make:migration create_template_fields_table
+php artisan make:migration add_static_values_to_events_table
+# Edit migrations as per Phase 1 specifications
+php artisan migrate
+```
+
+### Step 2: Create Models (Day 1-2)
+```bash
+php artisan make:model TemplateField
+# Update Template, Event, Registration models as per Phase 1
+```
+
+### Step 3: Create Services (Day 3-5)
+```bash
+php artisan make:service TemplateFieldService
+php artisan make:service EventConfigurationService
+# Update CertificateService
+```
+
+### Step 4: Update Controllers (Day 6-9)
+```bash
+# Update existing controllers with new methods
+# Add routes in routes/web.php or routes/api.php
+```
+
+### Step 5: Build Frontend (Day 10-19)
+```bash
+# Update Blade templates
+# Add JavaScript for dynamic forms
+# Integrate Fabric.js canvas updates
+npm run dev
+```
 
 ---
 
-**Document Version:** 1.0
-**Created:** November 4, 2025
-**Status:** Planning Phase
+## Testing Strategy
+
+### Manual Testing Checklist
+- [ ] Create template with predefined fields
+- [ ] Add custom field to template
+- [ ] Toggle "Show in Form" and verify canvas updates
+- [ ] Toggle "Show in Cert" and verify form preview
+- [ ] Position fields on canvas and save
+- [ ] Create event and select template
+- [ ] Fill static values (event_name, date)
+- [ ] Preview registration form
+- [ ] Submit public registration
+- [ ] Generate certificate and verify data merge
+- [ ] Download certificate PDF
+
+### Test in Laravel Tinker
+```php
+// Test Template creation with auto fields
+$template = Template::create(['name' => 'Test Template', 'background_image' => 'test.jpg']);
+$template->fields; // Should have 4 predefined fields
+
+// Test field relationships
+$template->formFields; // Only show_in_form = true
+$template->certFields; // Only show_in_cert = true
+$template->staticValueFields; // show_in_form=false, show_in_cert=true
+
+// Test Event with static values
+$event = Event::create([
+    'name' => 'Workshop',
+    'template_id' => $template->id,
+    'static_values' => ['event_name' => 'Laravel Workshop', 'date' => '2025-11-04']
+]);
+
+// Test data merge
+$registration = Registration::create([
+    'event_id' => $event->id,
+    'form_data' => ['name' => 'John', 'email' => 'john@example.com']
+]);
+$registration->getCertificateData(); // Should merge static + form data
+```
+
+---
+
+## API Endpoints Reference
+
+### Template Management
+```
+POST   /api/templates                    - Create template
+POST   /api/templates/{id}/fields        - Add custom field
+PATCH  /api/template-fields/{id}         - Update field properties
+PATCH  /api/template-fields/{id}/position - Update field position
+DELETE /api/template-fields/{id}         - Delete custom field
+GET    /api/templates/{id}/canvas-fields - Get certificate fields
+```
+
+### Event Management
+```
+POST   /api/events                              - Create event
+GET    /api/templates/{id}/static-value-fields  - Get static fields
+GET    /api/events/{id}/registration-preview    - Preview form
+```
+
+### Registration
+```
+GET    /register/{slug}                   - Public registration form
+POST   /register/{slug}                   - Submit registration
+```
+
+### Certificate
+```
+POST   /api/certificates/generate/{registration_id}  - Generate one
+POST   /api/certificates/bulk/{event_id}             - Generate all
+GET    /api/certificates/{id}/download               - Download PDF
+```
+
+---
+
+## Key Design Decisions
+
+### Why JSON for `static_values` and `form_data`?
+- **Flexibility**: Field structure can change without schema changes
+- **Template-driven**: Data structure adapts to template fields
+- **Simple queries**: Can cast to array in Laravel easily
+
+### Why separate `show_in_form` and `show_in_cert`?
+- **Maximum flexibility**: Some fields only for certificate (event_name, date)
+- **Some fields only for data** (email) - not shown on certificate
+- **Some fields both** (participant name)
+
+### Why predefined fields can't be deleted?
+- **Data integrity**: Ensures core fields always exist
+- **Prevents errors**: Certificate generation expects these fields
+- **User safety**: Can't accidentally break system
+
+### Why auto-initialize predefined fields in Template::boot()?
+- **Developer experience**: No manual field creation needed
+- **Consistency**: Every template has same base fields
+- **Less error-prone**: Can't forget to add essential fields
+
+---
+
+## Common Gotchas & Solutions
+
+### Issue: Canvas not updating when toggling "Show in Cert"
+**Solution:** Add event listener to checkboxes that calls `addFieldToCanvas()` or `removeFieldFromCanvas()`
+
+### Issue: Validation fails on registration form
+**Solution:** Check that field names match between template fields and form input names
+
+### Issue: Certificate shows empty values
+**Solution:** Verify static_values are saved in event and form_data in registration
+
+### Issue: Can't delete predefined field
+**Solution:** This is by design - predefined fields have `is_predefined = true`
+
+### Issue: Field positions not saving
+**Solution:** Ensure `updateFieldPosition()` is called on `object:modified` Fabric.js event
+
+---
+
+## Success Criteria
+
+### Phase 1 Complete When:
+✅ All migrations run without errors  
+✅ Models have correct relationships  
+✅ Can create template and see 4 predefined fields in database  
+✅ Tinker tests pass  
+
+### Phase 2 Complete When:
+✅ All service classes created  
+✅ Can add/update/delete custom fields via services  
+✅ Static value validation works  
+✅ Data merge logic returns correct combined data  
+
+### Phase 3 Complete When:
+✅ All API endpoints respond correctly  
+✅ Can create template via API  
+✅ Can create event with static values  
+✅ Registration validation works with dynamic rules  
+
+### Phase 4 Complete When:
+✅ Template builder UI functional  
+✅ Canvas syncs with field table  
+✅ Event creation loads static value form  
+✅ Public registration form renders dynamically  
+✅ Can generate and download certificate  
+
+---
+
+## Conclusion
+
+### Implementation Strategy: **FRESH START APPROACH** ✅
+
+Since you're starting with fresh data, this refactor is **SIGNIFICANTLY SIMPLER**:
+
+✅ **No data migration needed** - skip Phase 5  
+✅ **No complex rollback required** - just rebuild if needed  
+✅ **Faster timeline** - 3-4 weeks instead of 6-8  
+✅ **Lower risk** - no existing data to corrupt  
+✅ **Clean implementation** - no legacy compatibility code  
+
+### Next Steps:
+1. **Start with Phase 1** - Get database foundation right
+2. **Test thoroughly in Tinker** - Verify relationships before moving on
+3. **Build services incrementally** - One service at a time
+4. **UI last** - Backend must be solid first
+
+---
+
+**Last Updated:** November 4, 2025  
+**Status:** Planning Complete - Ready for Implementation  
+**Next Step:** Begin Phase 1 - Create migrations and models
