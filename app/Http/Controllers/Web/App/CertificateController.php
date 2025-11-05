@@ -11,6 +11,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\Font;
 use Yajra\DataTables\Facades\DataTables;
 
 class CertificateController extends Controller
@@ -228,8 +233,94 @@ class CertificateController extends Controller
         }
     }
 
+    /**
+     * Bulk download certificates as ZIP
+     */
+    public function bulkDownload(Request $request)
+    {
+        try {
+            $ids = $request->input('ids', []);
+
+            if (empty($ids)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No certificates selected'
+                ], 400);
+            }
+
+            // Get certificates
+            $certificates = Certificate::whereIn('id', $ids)->get();
+
+            if ($certificates->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No certificates found'
+                ], 404);
+            }
+
+            // Create ZIP file
+            $zipFileName = 'certificates-' . date('Y-m-d-His') . '.zip';
+            $zipFilePath = storage_path('app/temp/' . $zipFileName);
+
+            // Ensure temp directory exists
+            if (!file_exists(storage_path('app/temp'))) {
+                mkdir(storage_path('app/temp'), 0755, true);
+            }
+
+            $zip = new \ZipArchive();
+            if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create ZIP file'
+                ], 500);
+            }
+
+            $addedCount = 0;
+            foreach ($certificates as $certificate) {
+                if ($certificate->pdf_path && Storage::disk('public')->exists($certificate->pdf_path)) {
+                    $pdfPath = Storage::disk('public')->path($certificate->pdf_path);
+                    $pdfName = $certificate->certificate_number . '.pdf';
+                    
+                    if ($zip->addFile($pdfPath, $pdfName)) {
+                        $addedCount++;
+                    }
+                }
+            }
+
+            $zip->close();
+
+            if ($addedCount === 0) {
+                @unlink($zipFilePath);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No certificate PDFs found'
+                ], 404);
+            }
+
+            // Download and delete ZIP file
+            return response()->download($zipFilePath, $zipFileName)->deleteFileAfterSend(true);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to download certificates: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function download(Certificate $certificate)
     {
+        // Security: Only authenticated users can download certificates
+        if (!Auth::check()) {
+            abort(403, 'You must be logged in to download certificates. Please contact the certificate issuer if you need a copy.');
+        }
+
+        // Optional: Check if user is authorized (owner or admin)
+        // Uncomment to restrict downloads to certificate generator or admin only
+        // if (Auth::id() !== $certificate->generated_by && !Auth::user()->isRoot()) {
+        //     abort(403, 'You are not authorized to download this certificate.');
+        // }
+
         if (!$certificate->pdf_path || !Storage::disk('public')->exists($certificate->pdf_path)) {
             abort(404, 'Certificate PDF not found');
         }
@@ -245,5 +336,344 @@ class CertificateController extends Controller
         }
 
         return response()->file(Storage::disk('public')->path($certificate->pdf_path));
+    }
+
+    /**
+     * Download Excel template for bulk import
+     */
+    public function downloadTemplate(Event $event)
+    {
+        try {
+            $template = $event->template;
+            
+            // Get form fields (show_in_form = true)
+            $formFields = $template->formFields()
+                ->orderBy('order')
+                ->get();
+
+            // Create new Spreadsheet
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle('Certificate Data');
+
+            // Set headers
+            $col = 1;
+            foreach ($formFields as $field) {
+                $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+                
+                // Set header value
+                $sheet->setCellValue($columnLetter . '1', $field->field_label);
+                
+                // Style header
+                $sheet->getStyle($columnLetter . '1')->applyFromArray([
+                    'font' => [
+                        'bold' => true,
+                        'color' => ['rgb' => 'FFFFFF'],
+                    ],
+                    'fill' => [
+                        'fillType' => Fill::FILL_SOLID,
+                        'startColor' => ['rgb' => '4F46E5'],
+                    ],
+                ]);
+                
+                // Add data validation for select fields
+                if ($field->field_type === 'select' && !empty($field->options)) {
+                    $options = $field->options;
+                    $optionsList = implode(',', $options);
+                    
+                    // Apply validation to column (rows 2-1000)
+                    $validation = $sheet->getCell($columnLetter . '2')->getDataValidation();
+                    $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                    $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_INFORMATION);
+                    $validation->setAllowBlank(false);
+                    $validation->setShowInputMessage(true);
+                    $validation->setShowErrorMessage(true);
+                    $validation->setShowDropDown(true);
+                    $validation->setErrorTitle('Invalid Input');
+                    $validation->setError('Please select from dropdown');
+                    $validation->setPromptTitle('Select Option');
+                    $validation->setPrompt('Choose from: ' . $optionsList);
+                    $validation->setFormula1('"' . $optionsList . '"');
+                    
+                    // Clone validation to other rows
+                    for ($row = 3; $row <= 1000; $row++) {
+                        $sheet->getCell($columnLetter . $row)->setDataValidation(clone $validation);
+                    }
+                }
+                
+                // Add comment with field info
+                $comment = $field->field_label;
+                if ($field->is_required) {
+                    $comment .= ' (Required)';
+                }
+                $comment .= "\nType: " . ucfirst($field->field_type);
+                
+                $sheet->getComment($columnLetter . '1')
+                    ->getText()
+                    ->createTextRun($comment);
+                
+                // Auto-size column
+                $sheet->getColumnDimension($columnLetter)->setAutoSize(true);
+                
+                $col++;
+            }
+
+            // Add sample data row
+            $col = 1;
+            foreach ($formFields as $field) {
+                $columnLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($col);
+                
+                // Add sample data based on field type
+                $sampleData = match($field->field_type) {
+                    'email' => 'example@email.com',
+                    'date' => date('Y-m-d'),
+                    'number' => '123',
+                    'select' => !empty($field->options) ? $field->options[0] : 'Option 1',
+                    default => 'Sample ' . $field->field_label,
+                };
+                
+                $sheet->setCellValue($columnLetter . '2', $sampleData);
+                $sheet->getStyle($columnLetter . '2')->getFont()->setItalic(true)->getColor()->setRGB('999999');
+                
+                $col++;
+            }
+
+            // Freeze header row
+            $sheet->freezePane('A2');
+
+            // Create writer and download
+            $writer = new Xlsx($spreadsheet);
+            $fileName = 'certificate-template-' . $event->slug . '-' . date('Y-m-d') . '.xlsx';
+            $tempFile = tempnam(sys_get_temp_dir(), 'excel_');
+            
+            $writer->save($tempFile);
+
+            return response()->download($tempFile, $fileName)->deleteFileAfterSend(true);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate template: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Import and validate Excel file
+     */
+    public function importExcel(Request $request)
+    {
+        $request->validate([
+            'event_id' => 'required|exists:events,id',
+            'excel_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // Max 10MB
+        ]);
+
+        try {
+            $event = Event::with('template.formFields')->findOrFail($request->event_id);
+            $file = $request->file('excel_file');
+
+            // Load spreadsheet
+            $spreadsheet = IOFactory::load($file->getPathname());
+            $sheet = $spreadsheet->getActiveSheet();
+            $data = $sheet->toArray();
+
+            if (empty($data) || count($data) < 2) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Excel file is empty or contains only headers'
+                ], 400);
+            }
+
+            // Get headers from first row
+            $headers = array_map('trim', $data[0]);
+            
+            // Get form fields
+            $formFields = $event->template->formFields()->orderBy('order')->get();
+            $expectedHeaders = $formFields->pluck('field_label')->toArray();
+
+            // Validate headers
+            $missingHeaders = array_diff($expectedHeaders, $headers);
+            if (!empty($missingHeaders)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Missing required columns: ' . implode(', ', $missingHeaders)
+                ], 400);
+            }
+
+            // Map headers to field names
+            $headerMap = [];
+            foreach ($headers as $index => $header) {
+                $field = $formFields->firstWhere('field_label', $header);
+                if ($field) {
+                    $headerMap[$index] = $field->field_name;
+                }
+            }
+
+            // Parse data rows
+            $parsedData = [];
+            $errors = [];
+            $rowNumber = 1; // Start from 1 (excluding header)
+
+            for ($i = 1; $i < count($data); $i++) {
+                $row = $data[$i];
+                $rowNumber++;
+
+                // Skip empty rows
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                $rowData = [];
+                $rowErrors = [];
+
+                foreach ($row as $colIndex => $value) {
+                    if (!isset($headerMap[$colIndex])) {
+                        continue;
+                    }
+
+                    $fieldName = $headerMap[$colIndex];
+                    $field = $formFields->firstWhere('field_name', $fieldName);
+
+                    if (!$field) {
+                        continue;
+                    }
+
+                    // Trim value
+                    $value = is_string($value) ? trim($value) : $value;
+
+                    // Validate required fields
+                    if ($field->is_required && empty($value)) {
+                        $rowErrors[] = "{$field->field_label} is required";
+                        continue;
+                    }
+
+                    // Validate field type
+                    switch ($field->field_type) {
+                        case 'email':
+                            if (!empty($value) && !filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                                $rowErrors[] = "{$field->field_label} must be a valid email";
+                            }
+                            break;
+                        case 'number':
+                            if (!empty($value) && !is_numeric($value)) {
+                                $rowErrors[] = "{$field->field_label} must be a number";
+                            }
+                            break;
+                        case 'date':
+                            if (!empty($value)) {
+                                try {
+                                    $dateValue = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value);
+                                    $value = $dateValue->format('Y-m-d');
+                                } catch (\Exception $e) {
+                                    // Try parsing as string
+                                    $timestamp = strtotime($value);
+                                    if ($timestamp === false) {
+                                        $rowErrors[] = "{$field->field_label} must be a valid date";
+                                    } else {
+                                        $value = date('Y-m-d', $timestamp);
+                                    }
+                                }
+                            }
+                            break;
+                        case 'select':
+                            if (!empty($value) && !empty($field->options) && !in_array($value, $field->options)) {
+                                $rowErrors[] = "{$field->field_label} must be one of: " . implode(', ', $field->options);
+                            }
+                            break;
+                    }
+
+                    $rowData[$fieldName] = $value;
+                }
+
+                if (!empty($rowErrors)) {
+                    $errors[] = [
+                        'row' => $rowNumber,
+                        'errors' => $rowErrors,
+                        'data' => $rowData,
+                    ];
+                } else {
+                    $parsedData[] = [
+                        'row' => $rowNumber,
+                        'data' => $rowData,
+                    ];
+                }
+            }
+
+            // Return validation results
+            return response()->json([
+                'success' => true,
+                'message' => 'Excel file validated successfully',
+                'data' => $parsedData,
+                'errors' => $errors,
+                'total_rows' => count($parsedData) + count($errors),
+                'valid_rows' => count($parsedData),
+                'invalid_rows' => count($errors),
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process Excel file: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate certificates from Excel data
+     */
+    public function generateFromExcel(Request $request)
+    {
+        $request->validate([
+            'event_id' => 'required|exists:events,id',
+            'data' => 'required|array',
+            'data.*.data' => 'required|array',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $event = Event::findOrFail($request->event_id);
+            $rows = $request->data;
+            $certificates = [];
+            $errors = [];
+
+            foreach ($rows as $index => $row) {
+                try {
+                    $certificate = $this->certificateService->generateFromManualData(
+                        $event,
+                        $row['data'],
+                        Auth::id()
+                    );
+                    
+                    $certificates[] = [
+                        'row' => $row['row'] ?? ($index + 1),
+                        'certificate' => $certificate,
+                    ];
+                } catch (\Exception $e) {
+                    $errors[] = [
+                        'row' => $row['row'] ?? ($index + 1),
+                        'error' => $e->getMessage(),
+                    ];
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($certificates) . ' certificate(s) generated successfully',
+                'certificates' => $certificates,
+                'errors' => $errors,
+                'total' => count($rows),
+                'success_count' => count($certificates),
+                'error_count' => count($errors),
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate certificates: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

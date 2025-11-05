@@ -29,6 +29,19 @@
                         Generate Certificate
                     </a>
                 </div>
+                 <!--begin::Group actions-->
+                <div class="d-flex justify-content-end align-items-center gap-3 d-none" toolbar-table-1="selected">
+                    <div class="fw-bold me-5">
+                        <span class="me-2" toolbar-table-1="count"></span>Selected
+                    </div>
+                    <button type="button" class="btn btn-primary" action-select-table-1="email">Email
+                        Selected</button>
+                    <button type="button" class="btn btn-dark" action-select-table-1="download">Download 
+                        Selected</button>
+                    <button type="button" class="btn btn-danger" action-select-table-1="delete">Delete
+                        Selected</button>
+                </div>
+                <!--end::Group actions-->
             </div>
         </div>
         <div class="card-body pt-0">
@@ -36,7 +49,10 @@
                 <thead>
                     <tr class="text-start text-gray-500 fw-bold fs-7 text-uppercase gs-0">
                         <th class="w-10px pe-2">
-                            #
+                            <div class="form-check form-check-sm form-check-custom form-check-solid me-3">
+                                <input class="form-check-input" type="checkbox" data-kt-check="true"
+                                    data-kt-check-target="#table-1 .form-check-input" value="1" />
+                            </div>
                         </th>
                         <th>Certificate Number</th>
                         <th>Event</th>

@@ -50,11 +50,11 @@
                     <div id="excel-preview-container" class="d-none">
                         <div class="separator separator-dashed my-7"></div>
                         <h4 class="mb-5">Preview Data</h4>
-                        <div class="table-responsive" style="max-height: 300px;">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
                             <table class="table table-row-bordered table-row-gray-100 align-middle gs-0 gy-3">
-                                <thead>
+                                <thead class="sticky-top bg-light">
                                     <tr class="fw-bold text-muted">
-                                        <th>#</th>
+                                        <th class="text-start">#</th>
                                         <th id="preview-headers"></th>
                                     </tr>
                                 </thead>
