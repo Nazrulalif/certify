@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\App;
 use App\Http\Controllers\Controller;
 use App\Models\Template;
 use App\Models\TemplateField;
+use App\Services\TemplateFieldService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
@@ -175,6 +176,167 @@ class TemplateController extends Controller
     }
 
     /**
+     * Add a custom field to template
+     */
+    public function addField(Request $request, Template $template)
+    {
+        $request->validate([
+            'field_name' => 'required|string|max:255',
+            'field_label' => 'required|string|max:255',
+            'field_type' => 'required|in:text,email,date,number,textarea',
+            'show_in_form' => 'boolean',
+            'show_in_cert' => 'boolean',
+            'is_required' => 'boolean',
+        ]);
+
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $field = $fieldService->addCustomField($template, $request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Field added successfully!',
+                'field' => $field,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Update field properties
+     */
+    public function updateField(Request $request, TemplateField $field)
+    {
+        $request->validate([
+            'field_label' => 'sometimes|string|max:255',
+            'field_type' => 'sometimes|in:text,email,date,number,textarea',
+            'show_in_form' => 'sometimes|boolean',
+            'show_in_cert' => 'sometimes|boolean',
+            'is_required' => 'sometimes|boolean',
+        ]);
+
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $updatedField = $fieldService->updateField($field, $request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Field updated successfully!',
+                'field' => $updatedField,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Update field position on canvas
+     */
+    public function updateFieldPosition(Request $request, TemplateField $field)
+    {
+        $request->validate([
+            'position_data' => 'required|array',
+            'position_data.x' => 'sometimes|numeric',
+            'position_data.y' => 'sometimes|numeric',
+            'position_data.width' => 'sometimes|numeric',
+            'position_data.height' => 'sometimes|numeric',
+            'position_data.fontSize' => 'sometimes|numeric',
+            'position_data.fontFamily' => 'sometimes|string',
+            'position_data.color' => 'sometimes|string',
+            'position_data.textAlign' => 'sometimes|string',
+            'position_data.bold' => 'sometimes|boolean',
+            'position_data.italic' => 'sometimes|boolean',
+            'position_data.rotation' => 'sometimes|numeric',
+        ]);
+
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $updatedField = $fieldService->updateFieldPosition($field, $request->position_data);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Field position updated successfully!',
+                'field' => $updatedField,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a custom field
+     */
+    public function deleteField(TemplateField $field)
+    {
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $fieldService->deleteField($field);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Field deleted successfully!',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Get canvas fields (show_in_cert = true)
+     */
+    public function getCanvasFields(Template $template)
+    {
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $fields = $fieldService->getCanvasFields($template);
+
+            return response()->json([
+                'success' => true,
+                'fields' => $fields,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get form fields (show_in_form = true)
+     */
+    public function getFormFields(Template $template)
+    {
+        try {
+            $fieldService = app(TemplateFieldService::class);
+            $fields = $fieldService->getFormFields($template);
+
+            return response()->json([
+                'success' => true,
+                'fields' => $fields,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Remove the specified template from storage.
      */
     public function destroy(Template $template)
@@ -224,15 +386,17 @@ class TemplateController extends Controller
     public function downloadPreview(Template $template)
     {
         try {
-            // Load template fields
-            $template->load('fields');
+            // Load only certificate fields (show_in_cert = true)
+            $template->load(['fields' => function ($query) {
+                $query->where('show_in_cert', true)->orderBy('order');
+            }]);
 
-            // Check if template has fields
+            // Check if template has certificate fields
             if ($template->fields->isEmpty()) {
-                return back()->with('error', 'Template has no fields. Please add fields before generating preview.');
+                return back()->with('error', 'Template has no certificate fields. Please enable "Show in Cert" for at least one field.');
             }
 
-            // Generate dummy data based on field types
+            // Generate dummy data based on field types (for all fields, not just cert fields)
             $dummyData = [];
             foreach ($template->fields as $field) {
                 $dummyData[$field->field_name] = $this->generateDummyValue($field);
@@ -268,21 +432,29 @@ class TemplateController extends Controller
 
             // Prepare field data
             $fields = $template->fields->map(function ($field) use ($dummyData, $scaleX, $scaleY) {
+                // Get position data from JSON structure
+                $positionData = $field->position_data ?? [];
+                
+                // Skip fields without position data (not yet positioned on canvas)
+                if (empty($positionData) || !isset($positionData['x']) || !isset($positionData['y'])) {
+                    return null;
+                }
+                
                 return [
                     'field_name' => $field->field_name,
                     'value' => $dummyData[$field->field_name] ?? '',
-                    'x' => $field->x * $scaleX,
-                    'y' => $field->y * $scaleY,
-                    'width' => $field->width * $scaleX,
-                    'height' => $field->height * $scaleY,
-                    'font_size' => $field->font_size * min($scaleX, $scaleY),
-                    'font_family' => $field->font_family,
-                    'color' => $field->color,
-                    'alignment' => $field->text_align,
-                    'bold' => $field->bold,
-                    'italic' => $field->italic,
+                    'x' => ($positionData['x'] ?? 0) * $scaleX,
+                    'y' => ($positionData['y'] ?? 0) * $scaleY,
+                    'width' => ($positionData['width'] ?? 100) * $scaleX,
+                    'height' => ($positionData['height'] ?? 20) * $scaleY,
+                    'font_size' => ($positionData['fontSize'] ?? 16) * min($scaleX, $scaleY),
+                    'font_family' => $positionData['fontFamily'] ?? 'Arial',
+                    'color' => $positionData['color'] ?? '#000000',
+                    'alignment' => $positionData['textAlign'] ?? 'left',
+                    'bold' => $positionData['bold'] ?? false,
+                    'italic' => $positionData['italic'] ?? false,
                 ];
-            });
+            })->filter(); // Remove null values (fields without position data)
 
             // Convert background to base64
             $backgroundBase64 = null;

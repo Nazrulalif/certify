@@ -19,11 +19,13 @@ class Event extends Model
         'template_id',
         'registration_enabled',
         'slug',
+        'static_values',
         'created_by',
     ];
 
     protected $casts = [
         'registration_enabled' => 'boolean',
+        'static_values' => 'array',
     ];
 
     protected static function boot()
@@ -73,5 +75,46 @@ class Event extends Model
     public function getPublicUrlAttribute(): string
     {
         return url("/register/{$this->slug}");
+    }
+
+    /**
+     * Get certificate data for a registration (merge static + form data).
+     */
+    public function getCertificateData(Registration $registration): array
+    {
+        return array_merge(
+            $this->static_values ?? [],
+            $registration->form_data ?? []
+        );
+    }
+
+    /**
+     * Get fields that need static values.
+     */
+    public function getStaticValueFields()
+    {
+        if (!$this->template) {
+            return collect();
+        }
+        
+        return $this->template->staticValueFields;
+    }
+
+    /**
+     * Validate static values against template.
+     */
+    public function validateStaticValues(array $staticValues): bool
+    {
+        $requiredFields = $this->getStaticValueFields()
+            ->pluck('field_name')
+            ->toArray();
+        
+        foreach ($requiredFields as $field) {
+            if (!isset($staticValues[$field]) || empty($staticValues[$field])) {
+                throw new \Exception("Static value for '{$field}' is required.");
+            }
+        }
+        
+        return true;
     }
 }

@@ -10,7 +10,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TemplateField extends Model
 {
-    use SoftDeletes, HasUuids, HasFactory;
+    use HasUuids, HasFactory;
+    // use SoftDeletes, HasUuids, HasFactory;
     /**
      * The attributes that are mass assignable.
      *
@@ -19,18 +20,14 @@ class TemplateField extends Model
     protected $fillable = [
         'template_id',
         'field_name',
+        'field_label',
         'field_type',
-        'x',
-        'y',
-        'width',
-        'height',
-        'font_size',
-        'font_family',
-        'color',
-        'text_align',
-        'bold',
-        'italic',
-        'rotation',
+        'show_in_form',
+        'show_in_cert',
+        'is_required',
+        'is_predefined',
+        'position_data',
+        'order',
     ];
 
     /**
@@ -39,14 +36,11 @@ class TemplateField extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'x' => 'decimal:2',
-        'y' => 'decimal:2',
-        'width' => 'decimal:2',
-        'height' => 'decimal:2',
-        'font_size' => 'integer',
-        'bold' => 'boolean',
-        'italic' => 'boolean',
-        'rotation' => 'decimal:2',
+        'show_in_form' => 'boolean',
+        'show_in_cert' => 'boolean',
+        'is_required' => 'boolean',
+        'is_predefined' => 'boolean',
+        'position_data' => 'array',
     ];
 
     /**
@@ -58,23 +52,51 @@ class TemplateField extends Model
     }
 
     /**
+     * Scope: Only fields shown on certificate
+     */
+    public function scopeCertificateFields($query)
+    {
+        return $query->where('show_in_cert', true);
+    }
+
+    /**
+     * Scope: Only fields shown in registration form
+     */
+    public function scopeFormFields($query)
+    {
+        return $query->where('show_in_form', true);
+    }
+
+    /**
+     * Scope: Fields that need static values in events (not in form but on cert)
+     */
+    public function scopeStaticValueFields($query)
+    {
+        return $query->where('show_in_form', false)
+                     ->where('show_in_cert', true);
+    }
+
+    /**
      * Get field styles as array for rendering.
+     * Works with position_data JSON structure
      */
     public function getStylesAttribute(): array
     {
+        $positionData = $this->position_data ?? [];
+        
         return [
             'position' => 'absolute',
-            'left' => $this->x . 'px',
-            'top' => $this->y . 'px',
-            'width' => $this->width ? $this->width . 'px' : 'auto',
-            'height' => $this->height ? $this->height . 'px' : 'auto',
-            'font-size' => $this->font_size . 'px',
-            'font-family' => $this->font_family,
-            'color' => $this->color,
-            'text-align' => $this->text_align,
-            'font-weight' => $this->bold ? 'bold' : 'normal',
-            'font-style' => $this->italic ? 'italic' : 'normal',
-            'transform' => 'rotate(' . $this->rotation . 'deg)',
+            'left' => ($positionData['x'] ?? 0) . 'px',
+            'top' => ($positionData['y'] ?? 0) . 'px',
+            'width' => isset($positionData['width']) ? $positionData['width'] . 'px' : 'auto',
+            'height' => isset($positionData['height']) ? $positionData['height'] . 'px' : 'auto',
+            'font-size' => ($positionData['fontSize'] ?? 16) . 'px',
+            'font-family' => $positionData['fontFamily'] ?? 'Arial',
+            'color' => $positionData['color'] ?? '#000000',
+            'text-align' => $positionData['textAlign'] ?? 'left',
+            'font-weight' => ($positionData['bold'] ?? false) ? 'bold' : 'normal',
+            'font-style' => ($positionData['italic'] ?? false) ? 'italic' : 'normal',
+            'transform' => 'rotate(' . ($positionData['rotation'] ?? 0) . 'deg)',
         ];
     }
 }

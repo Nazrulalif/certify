@@ -105,7 +105,7 @@
                     return [
                         $event->id => [
                             'id' => $event->id,
-                            'fields' => $event->fields->map(function ($field) {
+                            'fields' => $event->template->formFields->map(function ($field) {
                                     return [
                                         'field_name' => $field->field_name,
                                         'field_label' => $field->field_label,

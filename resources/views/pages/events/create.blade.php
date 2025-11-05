@@ -67,93 +67,46 @@
                     </div>
                 </div>
 
-                <!--begin::Form Builder-->
-                <div class="card">
+                <!--begin::Static Values Form-->
+                <div class="card" id="static-values-card" style="display: none;">
                     <div class="card-header">
-                        <h3 class="card-title">Registration Form Fields</h3>
+                        <h3 class="card-title">Certificate Static Values</h3>
                         <div class="card-toolbar">
-                            <button type="button" class="btn btn-sm btn-primary" onclick="addField()">
-                                <i class="ki-duotone ki-plus fs-2"></i>
-                                Add Field
+                            <span class="text-muted fs-7">These values will appear on all certificates for this event</span>
+                        </div>
+                    </div>
+                    <div class="card-body" id="static-values-container">
+                        <!-- Dynamically loaded from template -->
+                    </div>
+                </div>
+                <!--end::Static Values Form-->
+
+                <!--begin::Registration Form Preview-->
+                <div class="card mt-6" id="form-preview-card" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Registration Form Preview</h3>
+                        <div class="card-toolbar">
+                            <button type="button" class="btn btn-sm btn-light" id="refresh-preview-btn">
+                                <i class="ki-duotone ki-arrows-circle fs-3"></i>
+                                Refresh
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <div id="fields-container">
-                            @if (isset($event) && $event->fields->count() > 0)
-                                @foreach ($event->fields as $index => $field)
-                                    <div class="field-item mb-5 p-5 border border-gray-300 rounded position-relative"
-                                        data-index="{{ $index }}">
-                                        <a class="position-absolute cursor-pointer"
-                                            style="top: 10px; right: 10px;" onclick="removeField(this)">
-                                            <i class="ki-duotone ki-cross-circle text-danger fs-2">
-                                                <span class="path1"></span>
-                                                <span class="path2"></span>
-                                            </i>
-                                        </a>
-
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <x-form.input label="Field Label" :name="'fields[' . $index . '][field_label]'" :value="old(
-                                                    'fields.' . $index . '.field_label',
-                                                    $field->field_label,
-                                                )"
-                                                    placeholder="e.g., Participant Name" size="sm" required />
-                                            </div>
-                                            <div class="col-md-6">
-                                                <x-form.input label="Field Name (Internal)" :name="'fields[' . $index . '][field_name]'"
-                                                    :value="old(
-                                                        'fields.' . $index . '.field_name',
-                                                        $field->field_name,
-                                                    )" placeholder="e.g., participant_name"
-                                                    help="Use lowercase with underscores (no spaces)" size="sm"
-                                                    required />
-                                            </div>
-                                            <div class="col-md-6">
-                                                <x-form.select label="Field Type" :name="'fields[' . $index . '][field_type]'"
-                                                    class="field-type-select" size="sm" required>
-                                                    @foreach ($fieldTypes as $value => $label)
-                                                        <option value="{{ $value }}"
-                                                            {{ old("fields.{$index}.field_type", $field->field_type) == $value ? 'selected' : '' }}>
-                                                            {{ $label }}
-                                                        </option>
-                                                    @endforeach
-                                                </x-form.select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="fw-bold fs-7 mb-2">Options</label>
-                                                <div class="form-check form-switch form-check-custom form-check-solid">
-                                                    <input class="form-check-input" type="checkbox"
-                                                        name="fields[{{ $index }}][required]" value="1"
-                                                        {{ old("fields.{$index}.required", $field->required) ? 'checked' : '' }}>
-                                                    <label class="form-check-label">Required Field</label>
-                                                </div>
-                                            </div>
-                                            <div class="col-12 select-options-container"
-                                                style="{{ $field->field_type === 'select' ? '' : 'display: none;' }}">
-                                                <x-form.input label="Dropdown Options (comma-separated)" :name="'fields[' . $index . '][options]'"
-                                                    :value="old(
-                                                        'fields.' . $index . '.options',
-                                                        is_array($field->options) ? implode(', ', $field->options) : '',
-                                                    )" placeholder="e.g., Option 1, Option 2"
-                                                    size="sm" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endforeach
-                            @else
-                                <div class="text-center py-10 text-gray-600" id="no-fields-message">
-                                    <i class="ki-duotone ki-information-3 fs-5x mb-3">
-                                        <span class="path1"></span>
-                                        <span class="path2"></span>
-                                        <span class="path3"></span>
-                                    </i>
-                                    <p>No fields added yet. Click "Add Field" to create your registration form.</p>
-                                </div>
-                            @endif
+                        <div class="alert alert-info d-flex align-items-center">
+                            <i class="ki-duotone ki-information-3 fs-2x me-3">
+                                <span class="path1"></span>
+                                <span class="path2"></span>
+                                <span class="path3"></span>
+                            </i>
+                            <span>This is how participants will see the registration form</span>
+                        </div>
+                        <div id="form-preview-container">
+                            <!-- Dynamically loaded -->
                         </div>
                     </div>
                 </div>
+                <!--end::Registration Form Preview-->
             </div>
             <!--end::Event Information-->
 
@@ -195,122 +148,200 @@
 
 @push('scripts')
     <script>
-        let fieldIndex = {{ isset($event) ? $event->fields->count() : 0 }};
-
-        function addField() {
-            const noFieldsMessage = document.getElementById('no-fields-message');
-            if (noFieldsMessage) {
-                noFieldsMessage.remove();
+        // When template is selected, load static value fields and form preview
+        $('[name="template_id"]').on('change', function() {
+            const templateId = $(this).val();
+            
+            if (!templateId) {
+                $('#static-values-card').hide();
+                $('#form-preview-card').hide();
+                return;
             }
+            
+            // Load static value fields
+            loadStaticValueFields(templateId);
+            
+            // Load form preview
+            loadFormPreview(templateId);
+        });
 
-            const container = document.getElementById('fields-container');
-            const fieldHtml = `
-                <div class="field-item mb-5 p-5 border border-gray-300 rounded position-relative" data-index="${fieldIndex}">
-                    <a class="position-absolute cursor-pointer"
-                        style="top: 10px; right: 10px;" onclick="removeField(this)">
-                        <i class="ki-duotone ki-cross-circle text-danger fs-2">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                        </i>
-                    </a>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="required fw-bold fs-7 mb-2">Field Label</label>
-                            <input type="text" name="fields[${fieldIndex}][field_label]"
-                                class="form-control form-control-sm" placeholder="e.g., Participant Name" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="required fw-bold fs-7 mb-2">Field Name (Internal)</label>
-                            <input type="text" name="fields[${fieldIndex}][field_name]"
-                                class="form-control form-control-sm" placeholder="e.g., participant_name" required>
-                            <div class="form-text">Use lowercase with underscores (no spaces)</div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="required fw-bold fs-7 mb-2">Field Type</label>
-                            <select name="fields[${fieldIndex}][field_type]" class="form-select form-select-sm field-type-select" required>
-                                @foreach ($fieldTypes as $value => $label)
-                                    <option value="{{ $value }}">{{ $label }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="fw-bold fs-7 mb-2">Options</label>
-                            <div class="form-check form-switch form-check-custom form-check-solid">
-                                <input class="form-check-input" type="checkbox" name="fields[${fieldIndex}][required]" value="1">
-                                <label class="form-check-label">Required Field</label>
-                            </div>
-                        </div>
-                        <div class="col-12 select-options-container" style="display: none;">
-                            <label class="fw-bold fs-7 mb-2">Dropdown Options (comma-separated)</label>
-                            <input type="text" name="fields[${fieldIndex}][options]" class="form-control form-control-sm"
-                                placeholder="e.g., Option 1, Option 2">
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            container.insertAdjacentHTML('beforeend', fieldHtml);
-            fieldIndex++;
-
-            // Attach event listener to the newly added field type select
-            attachFieldTypeListener();
-        }
-
-        function removeField(button) {
-            const fieldItem = button.closest('.field-item');
-            fieldItem.remove();
-
-            // Show "no fields" message if no fields remain
-            const container = document.getElementById('fields-container');
-            if (container.children.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-10 text-gray-600" id="no-fields-message">
-                        <i class="ki-duotone ki-information-3 fs-5x mb-3">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                            <span class="path3"></span>
-                        </i>
-                        <p>No fields added yet. Click "Add Field" to create your registration form.</p>
-                    </div>
-                `;
+        // Trigger on page load if template is already selected (edit mode)
+        $(document).ready(function() {
+            const selectedTemplate = $('[name="template_id"]').val();
+            if (selectedTemplate) {
+                $('[name="template_id"]').trigger('change');
             }
-        }
+        });
 
-        function attachFieldTypeListener() {
-            document.querySelectorAll('.field-type-select').forEach(select => {
-                select.removeEventListener('change', handleFieldTypeChange);
-                select.addEventListener('change', handleFieldTypeChange);
+        // Load static value fields from template
+        function loadStaticValueFields(templateId) {
+            $.ajax({
+                url: `/templates/${templateId}/static-value-fields`,
+                type: 'GET',
+                success: function(response) {
+                    if (response.fields.length > 0) {
+                        renderStaticValuesForm(response.fields);
+                        $('#static-values-card').slideDown(300);
+                    } else {
+                        $('#static-values-card').hide();
+                        toastr.info('This template has no fields that require static values');
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error('Failed to load template fields');
+                    console.error(xhr);
+                }
             });
         }
 
-        function handleFieldTypeChange(e) {
-            const fieldItem = e.target.closest('.field-item');
-            const optionsContainer = fieldItem.querySelector('.select-options-container');
+        // Render static values form
+        function renderStaticValuesForm(fields) {
+            let html = '<div class="row g-5">';
+            
+            fields.forEach(field => {
+                const existingValue = @json(isset($event) ? $event->static_values ?? [] : []);
+                const fieldValue = existingValue[field.field_name] || '';
+                
+                html += `
+                    <div class="col-md-6">
+                        <label class="form-label required">${field.field_label}</label>
+                        ${getInputForFieldType(field, fieldValue)}
+                        <div class="form-text">This will appear on all certificates</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            $('#static-values-container').html(html);
+        }
 
-            if (e.target.value === 'select') {
-                optionsContainer.style.display = 'block';
-            } else {
-                optionsContainer.style.display = 'none';
+        // Get input HTML based on field type
+        function getInputForFieldType(field, value = '') {
+            const name = `static_values[${field.field_name}]`;
+            const escapedValue = $('<div>').text(value).html(); // Escape HTML
+            
+            switch (field.field_type) {
+                case 'date':
+                    return `<input type="date" class="form-control" name="${name}" value="${escapedValue}" required>`;
+                case 'number':
+                    return `<input type="number" class="form-control" name="${name}" value="${escapedValue}" required>`;
+                case 'email':
+                    return `<input type="email" class="form-control" name="${name}" value="${escapedValue}" required>`;
+                case 'textarea':
+                    return `<textarea class="form-control" name="${name}" rows="3" required>${escapedValue}</textarea>`;
+                default:
+                    return `<input type="text" class="form-control" name="${name}" value="${escapedValue}" required>`;
             }
         }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            attachFieldTypeListener();
+        // Load form preview
+        function loadFormPreview(templateId) {
+            $.ajax({
+                url: `/templates/${templateId}/registration-form-preview`,
+                type: 'GET',
+                success: function(response) {
+                    if (response.fields.length > 0) {
+                        renderFormPreview(response.fields);
+                        $('#form-preview-card').slideDown(300);
+                    } else {
+                        $('#form-preview-card').hide();
+                        toastr.warning('This template has no form fields configured');
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error('Failed to load form preview');
+                    console.error(xhr);
+                }
+            });
+        }
+
+        // Render form preview
+        function renderFormPreview(fields) {
+            let html = '<form class="form">';
+            
+            fields.forEach(field => {
+                const requiredLabel = field.is_required ? '<span class="text-danger">*</span>' : '';
+                
+                html += `
+                    <div class="mb-5">
+                        <label class="form-label">${field.field_label} ${requiredLabel}</label>
+                        ${getPreviewInputForType(field)}
+                    </div>
+                `;
+            });
+            
+            html += `
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="text-muted fs-7"><span class="text-danger">*</span> Required fields</span>
+                    <button type="button" class="btn btn-primary" disabled>
+                        <i class="ki-duotone ki-check fs-2"></i>
+                        Submit Registration
+                    </button>
+                </div>
+            </form>`;
+            
+            $('#form-preview-container').html(html);
+        }
+
+        // Get preview input HTML
+        function getPreviewInputForType(field) {
+            const attrs = `class="form-control" ${field.is_required ? 'required' : ''} disabled`;
+            const placeholder = `Enter ${field.field_label.toLowerCase()}`;
+            
+            switch (field.field_type) {
+                case 'email':
+                    return `<input type="email" ${attrs} placeholder="${placeholder}">`;
+                case 'date':
+                    return `<input type="date" ${attrs}>`;
+                case 'number':
+                    return `<input type="number" ${attrs} placeholder="${placeholder}">`;
+                case 'textarea':
+                    return `<textarea ${attrs} rows="3" placeholder="${placeholder}"></textarea>`;
+                default:
+                    return `<input type="text" ${attrs} placeholder="${placeholder}">`;
+            }
+        }
+
+        // Refresh preview button
+        $('#refresh-preview-btn').on('click', function() {
+            const templateId = $('[name="template_id"]').val();
+            if (templateId) {
+                loadFormPreview(templateId);
+                toastr.success('Preview refreshed');
+            }
         });
 
         // Form validation
-        document.getElementById('event-form').addEventListener('submit', function(e) {
-            const fieldsContainer = document.getElementById('fields-container');
-            const fieldItems = fieldsContainer.querySelectorAll('.field-item');
-
-            if (fieldItems.length === 0) {
+        $('#event-form').on('submit', function(e) {
+            const templateId = $('[name="template_id"]').val();
+            
+            if (!templateId) {
                 e.preventDefault();
                 Swal.fire({
                     icon: 'error',
-                    title: 'No Fields Added',
-                    text: 'Please add at least one registration form field.'
+                    title: 'Template Required',
+                    text: 'Please select a certificate template'
+                });
+                return false;
+            }
+            
+            // Check if static values are filled (if any exist)
+            const staticValuesInputs = $('#static-values-container input[required], #static-values-container textarea[required]');
+            let hasEmptyStaticValues = false;
+            
+            staticValuesInputs.each(function() {
+                if (!$(this).val()) {
+                    hasEmptyStaticValues = true;
+                    return false; // break loop
+                }
+            });
+            
+            if (hasEmptyStaticValues) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Missing Static Values',
+                    text: 'Please fill all required certificate static values'
                 });
                 return false;
             }

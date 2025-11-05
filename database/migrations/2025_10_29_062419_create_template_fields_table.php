@@ -15,20 +15,19 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->onDelete('cascade');
             $table->string('field_name'); // e.g., 'name', 'event_name', 'date'
-            $table->string('field_type')->default('text'); // text, date, number
-            $table->decimal('x', 8, 2)->default(0); // X position
-            $table->decimal('y', 8, 2)->default(0); // Y position
-            $table->decimal('width', 8, 2)->nullable(); // Width
-            $table->decimal('height', 8, 2)->nullable(); // Height
-            $table->integer('font_size')->default(16);
-            $table->string('font_family')->default('Arial');
-            $table->string('color')->default('#000000'); // Hex color
-            $table->string('text_align')->default('left'); // left, center, right
-            $table->boolean('bold')->default(false);
-            $table->boolean('italic')->default(false);
-            $table->decimal('rotation', 5, 2)->default(0); // Rotation angle
-            $table->softDeletes();
+            $table->string('field_label')->nullable(); // Display label for forms
+            $table->string('field_type')->default('text'); // text, email, date, number, textarea
+            $table->boolean('show_in_form')->default(true); // Show in registration form
+            $table->boolean('show_in_cert')->default(true); // Show on certificate
+            $table->boolean('is_required')->default(false); // Required in registration form
+            $table->boolean('is_predefined')->default(false); // Cannot be deleted
+            $table->json('position_data')->nullable(); // All positioning/styling data (x, y, fontSize, etc.)
+            $table->integer('order')->default(0); // Display order in forms
+            // $table->softDeletes();
             $table->timestamps();
+            
+            // Ensure unique field names per template
+            $table->unique(['template_id', 'field_name']);
         });
     }
 

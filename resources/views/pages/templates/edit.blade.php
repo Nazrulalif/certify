@@ -16,6 +16,93 @@
     <div class="row g-5">
         <!--begin::Left column - Canvas-->
         <div class="col-xl-8">
+            <!--begin::Field Definition Table-->
+            <div class="card mb-5">
+                <div class="card-header">
+                    <h3 class="card-title">Field Configuration</h3>
+                    <div class="card-toolbar">
+                        <button type="button" class="btn btn-sm btn-primary" id="add-custom-field-btn">
+                            <i class="ki-duotone ki-plus fs-3"></i>
+                            Add Custom Field
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-row-bordered align-middle gs-5" id="fields-table">
+                            <thead>
+                                <tr class="fw-bold text-muted bg-light">
+                                    <th class="min-w-150px">Field Name</th>
+                                    <th class="min-w-120px">Field Label</th>
+                                    <th class="min-w-80px">Type</th>
+                                    <th class="text-center min-w-100px">Show in Form</th>
+                                    <th class="text-center min-w-100px">Show in Cert</th>
+                                    <th class="text-center min-w-80px">Required</th>
+                                    <th class="text-center min-w-80px">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="fields-tbody">
+                                @foreach($template->fields->sortBy('order') as $field)
+                                <tr data-field-id="{{ $field->id }}" data-field-name="{{ $field->field_name }}">
+                                    <td>
+                                        <span class="badge badge-light-dark">{{ $field->field_name }}</span>
+                                        @if($field->is_predefined)
+                                        <span class="badge badge-info badge-sm ms-1">Predefined</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="text-gray-800 fw-semibold">{{ $field->field_label }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-light">{{ ucfirst($field->field_type) }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check form-check-custom form-check-solid form-check-sm d-inline-block">
+                                            <input class="form-check-input toggle-show-in-form" type="checkbox" 
+                                                {{ $field->show_in_form ? 'checked' : '' }}
+                                                data-field-id="{{ $field->id }}">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check form-check-custom form-check-solid form-check-sm d-inline-block">
+                                            <input class="form-check-input toggle-show-in-cert" type="checkbox" 
+                                                {{ $field->show_in_cert ? 'checked' : '' }}
+                                                data-field-id="{{ $field->id }}">
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="form-check form-check-custom form-check-solid form-check-sm d-inline-block">
+                                            <input class="form-check-input toggle-required" type="checkbox" 
+                                                {{ $field->is_required ? 'checked' : '' }}
+                                                data-field-id="{{ $field->id }}"
+                                                {{ !$field->show_in_form ? 'disabled' : '' }}>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        @if(!$field->is_predefined)
+                                        <button class="btn btn-sm btn-icon btn-light-danger delete-field-btn" 
+                                            data-field-id="{{ $field->id }}" title="Delete Field">
+                                            <i class="ki-duotone ki-trash fs-5">
+                                                <span class="path1"></span>
+                                                <span class="path2"></span>
+                                                <span class="path3"></span>
+                                                <span class="path4"></span>
+                                                <span class="path5"></span>
+                                            </i>
+                                        </button>
+                                        @else
+                                        <span class="text-muted fs-7">Protected</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!--end::Field Definition Table-->
+
             <div class="card ">
                 <div class="card-header">
                     <div class="card-title">
@@ -46,7 +133,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="mb-5">
+                    <div class="mb-5 d-none">
                         <div class="d-flex flex-wrap gap-2 mb-3">
                             <button type="button" class="btn btn-sm btn-light-primary" id="add-text-btn">
                                 <i class="ki-duotone ki-text fs-3"></i>
@@ -330,6 +417,279 @@
 @push('scripts')
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
     <script>
+        // ====================================================
+        // FIELD TABLE INTERACTIONS
+        // ====================================================
+
+        // Toggle "Show in Form" checkbox
+        $(document).on('change', '.toggle-show-in-form', function() {
+            const fieldId = $(this).data('field-id');
+            const showInForm = $(this).is(':checked');
+            const $requiredCheckbox = $(this).closest('tr').find('.toggle-required');
+            
+            // Disable "Required" if not in form
+            $requiredCheckbox.prop('disabled', !showInForm);
+            if (!showInForm) {
+                $requiredCheckbox.prop('checked', false);
+            }
+            
+            // Update via AJAX
+            $.ajax({
+                url: `/template-fields/${fieldId}`,
+                type: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    show_in_form: showInForm,
+                    is_required: !showInForm ? false : $requiredCheckbox.is(':checked')
+                }),
+                success: function(response) {
+                    toastr.success('Field visibility updated successfully');
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Failed to update field');
+                    // Revert checkbox on error
+                    $(this).prop('checked', !showInForm);
+                }
+            });
+        });
+
+        // Toggle "Show in Cert" checkbox - Add/Remove from canvas
+        $(document).on('change', '.toggle-show-in-cert', function() {
+            const fieldId = $(this).data('field-id');
+            const fieldName = $(this).closest('tr').data('field-name');
+            const showInCert = $(this).is(':checked');
+            
+            // Update field via AJAX
+            $.ajax({
+                url: `/template-fields/${fieldId}`,
+                type: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    show_in_cert: showInCert
+                }),
+                success: function(response) {
+                    if (showInCert) {
+                        // Add field to canvas with position from response
+                        const positionData = response.field.position_data || {};
+                        addFieldToCanvas(fieldName, {
+                            left: (positionData.x || 100) * canvasScaleRatio,
+                            top: (positionData.y || 100) * canvasScaleRatio,
+                            fontSize: (positionData.fontSize || 16) * canvasScaleRatio,
+                            fontFamily: positionData.fontFamily || 'Arial',
+                            fill: positionData.color || '#000000',
+                            textAlign: positionData.textAlign || 'left',
+                            fontWeight: positionData.bold ? 'bold' : 'normal',
+                            fontStyle: positionData.italic ? 'italic' : 'normal',
+                            angle: positionData.rotation || 0,
+                            fieldType: response.field.field_type
+                        });
+                        toastr.success('Field added to certificate canvas');
+                    } else {
+                        // Remove field from canvas
+                        removeFieldFromCanvas(fieldName);
+                        toastr.success('Field removed from certificate canvas');
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Failed to update field');
+                    // Revert checkbox on error
+                    $(this).prop('checked', !showInCert);
+                }
+            });
+        });
+
+        // Toggle "Required" checkbox
+        $(document).on('change', '.toggle-required', function() {
+            const fieldId = $(this).data('field-id');
+            const isRequired = $(this).is(':checked');
+            
+            $.ajax({
+                url: `/template-fields/${fieldId}`,
+                type: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    is_required: isRequired
+                }),
+                success: function() {
+                    toastr.success('Field requirement updated');
+                },
+                error: function(xhr) {
+                    toastr.error(xhr.responseJSON?.message || 'Failed to update field');
+                    // Revert checkbox on error
+                    $(this).prop('checked', !isRequired);
+                }
+            });
+        });
+
+        // Add Custom Field Button
+        $('#add-custom-field-btn').on('click', function() {
+            Swal.fire({
+                title: 'Add Custom Field',
+                html: `
+                    <div class="text-start">
+                        <div class="mb-4">
+                            <label class="form-label required">Field Name (no spaces)</label>
+                            <input type="text" class="form-control" id="new-custom-field-name" 
+                                placeholder="e.g., company_name, department">
+                            <div class="form-text">Used as identifier, lowercase with underscores</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label required">Field Label</label>
+                            <input type="text" class="form-control" id="new-custom-field-label" 
+                                placeholder="e.g., Company Name, Department">
+                            <div class="form-text">Display name shown to users</div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="form-label">Field Type</label>
+                            <select class="form-select" id="new-custom-field-type">
+                                <option value="text">Text</option>
+                                <option value="email">Email</option>
+                                <option value="date">Date</option>
+                                <option value="number">Number</option>
+                                <option value="textarea">Textarea</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-check-custom form-check-solid mb-2">
+                                <input class="form-check-input" type="checkbox" id="new-custom-show-in-form" checked>
+                                <label class="form-check-label">Show in Registration Form</label>
+                            </div>
+                            <div class="form-check form-check-custom form-check-solid mb-2">
+                                <input class="form-check-input" type="checkbox" id="new-custom-show-in-cert">
+                                <label class="form-check-label">Show on Certificate</label>
+                            </div>
+                            <div class="form-check form-check-custom form-check-solid">
+                                <input class="form-check-input" type="checkbox" id="new-custom-required">
+                                <label class="form-check-label">Required Field</label>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                width: '600px',
+                showCancelButton: true,
+                confirmButtonText: 'Add Field',
+                cancelButtonText: 'Cancel',
+                customClass: {
+                    confirmButton: 'btn btn-primary',
+                    cancelButton: 'btn btn-light'
+                },
+                preConfirm: () => {
+                    const fieldName = $('#new-custom-field-name').val().trim();
+                    const fieldLabel = $('#new-custom-field-label').val().trim();
+                    
+                    if (!fieldName || !fieldLabel) {
+                        Swal.showValidationMessage('Please fill all required fields');
+                        return false;
+                    }
+                    
+                    // Validate field name format (lowercase, underscores only)
+                    if (!/^[a-z][a-z0-9_]*$/.test(fieldName)) {
+                        Swal.showValidationMessage('Field name must start with a letter and contain only lowercase letters, numbers, and underscores');
+                        return false;
+                    }
+                    
+                    return {
+                        field_name: fieldName,
+                        field_label: fieldLabel,
+                        field_type: $('#new-custom-field-type').val(),
+                        show_in_form: $('#new-custom-show-in-form').is(':checked'),
+                        show_in_cert: $('#new-custom-show-in-cert').is(':checked'),
+                        is_required: $('#new-custom-required').is(':checked')
+                    };
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/templates/{{ $template->id }}/fields`,
+                        type: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        contentType: 'application/json',
+                        data: JSON.stringify(result.value),
+                        success: function(response) {
+                            // Reload page to show new field
+                            location.reload();
+                        },
+                        error: function(xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: xhr.responseJSON?.message || 'Failed to add custom field'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // Delete Field Button
+        $(document).on('click', '.delete-field-btn', function() {
+            const fieldId = $(this).data('field-id');
+            const $row = $(this).closest('tr');
+            const fieldName = $row.data('field-name');
+            
+            Swal.fire({
+                title: 'Delete Custom Field?',
+                text: 'This will permanently remove this field from the template',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.ajax({
+                        url: `/template-fields/${fieldId}`,
+                        type: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        success: function() {
+                            // Remove from canvas if present
+                            removeFieldFromCanvas(fieldName);
+                            // Remove row from table
+                            $row.fadeOut(300, function() { 
+                                $(this).remove(); 
+                            });
+                            toastr.success('Custom field deleted successfully');
+                        },
+                        error: function(xhr) {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error!',
+                                text: xhr.responseJSON?.message || 'Failed to delete field'
+                            });
+                        }
+                    });
+                }
+            });
+        });
+
+        // Helper: Remove field from canvas by field name
+        function removeFieldFromCanvas(fieldName) {
+            const objects = canvas.getObjects();
+            objects.forEach(obj => {
+                if (obj.type === 'i-text' && obj.text === fieldName) {
+                    canvas.remove(obj);
+                }
+            });
+            canvas.renderAll();
+        }
+
+        // ====================================================
+        // FABRIC.JS CANVAS INITIALIZATION
+        // ====================================================
+
         // Initialize Fabric.js canvas
         const canvas = new fabric.Canvas('canvas', {
             width: 800,
@@ -376,18 +736,22 @@
         // Load existing fields with scaled positions
         function loadExistingFields() {
             existingFields.forEach(field => {
-                addTextField(field.field_name, {
-                    left: parseFloat(field.x) * canvasScaleRatio,
-                    top: parseFloat(field.y) * canvasScaleRatio,
-                    fontSize: field.font_size * canvasScaleRatio,
-                    fontFamily: field.font_family,
-                    fill: field.color,
-                    textAlign: field.text_align,
-                    fontWeight: field.bold ? 'bold' : 'normal',
-                    fontStyle: field.italic ? 'italic' : 'normal',
-                    angle: parseFloat(field.rotation) || 0,
-                    fieldType: field.field_type
-                });
+                // Only load fields that should be shown on certificate
+                if (field.show_in_cert) {
+                    const positionData = field.position_data || {};
+                    addTextField(field.field_name, {
+                        left: (positionData.x || parseFloat(field.x) || 100) * canvasScaleRatio,
+                        top: (positionData.y || parseFloat(field.y) || 100) * canvasScaleRatio,
+                        fontSize: (positionData.fontSize || field.font_size || 16) * canvasScaleRatio,
+                        fontFamily: positionData.fontFamily || field.font_family || 'Arial',
+                        fill: positionData.color || field.color || '#000000',
+                        textAlign: positionData.textAlign || field.text_align || 'left',
+                        fontWeight: (positionData.bold || field.bold) ? 'bold' : 'normal',
+                        fontStyle: (positionData.italic || field.italic) ? 'italic' : 'normal',
+                        angle: positionData.rotation || parseFloat(field.rotation) || 0,
+                        fieldType: field.field_type,
+                    });
+                }
             });
         }
 
@@ -410,7 +774,7 @@
                 // Enable controls
                 hasControls: true,
                 hasBorders: true,
-                lockScalingFlip: true
+                lockScalingFlip: true,
             };
 
             const textObj = new fabric.IText(text, {
@@ -436,6 +800,24 @@
             canvas.setActiveObject(textObj);
             canvas.renderAll();
             updateFieldProperties(textObj);
+        }
+
+        // Helper: Add field to canvas (wrapper for addTextField)
+        function addFieldToCanvas(fieldName, options = {}) {
+            // Check if field already exists on canvas
+            const existingField = canvas.getObjects().find(obj => 
+                obj.type === 'i-text' && obj.text === fieldName
+            );
+            
+            if (existingField) {
+                console.log(`Field ${fieldName} already exists on canvas`);
+                canvas.setActiveObject(existingField);
+                canvas.renderAll();
+                return;
+            }
+            
+            // Add new field using addTextField
+            addTextField(fieldName, options);
         }
 
         // Add new text field button - Open modal
@@ -677,53 +1059,69 @@
                 return;
             }
 
-            const fields = objects.map(obj => {
-                // Calculate actual dimensions considering scale
-                const actualWidth = obj.width * obj.scaleX;
-                const actualHeight = obj.height * obj.scaleY;
-
+            // Build array of position updates
+            const updates = objects.map(obj => {
                 return {
                     field_name: obj.text,
-                    field_type: obj.fieldType || 'text',
-                    // Convert canvas coordinates back to original image coordinates
-                    x: Math.round(obj.left / canvasScaleRatio),
-                    y: Math.round(obj.top / canvasScaleRatio),
-                    width: Math.round(actualWidth / canvasScaleRatio),
-                    height: Math.round(actualHeight / canvasScaleRatio),
-                    font_size: Math.round(obj.fontSize / canvasScaleRatio),
-                    font_family: obj.fontFamily,
-                    color: obj.fill,
-                    text_align: obj.textAlign || 'left',
-                    bold: obj.fontWeight === 'bold',
-                    italic: obj.fontStyle === 'italic',
-                    rotation: Math.round(obj.angle || 0)
+                    position_data: {
+                        x: Math.round(obj.left / canvasScaleRatio),
+                        y: Math.round(obj.top / canvasScaleRatio),
+                        fontSize: Math.round(obj.fontSize / canvasScaleRatio),
+                        fontFamily: obj.fontFamily,
+                        color: obj.fill,
+                        textAlign: obj.textAlign || 'left',
+                        bold: obj.fontWeight === 'bold',
+                        italic: obj.fontStyle === 'italic',
+                        rotation: Math.round(obj.angle || 0)
+                    }
                 };
             });
 
-            console.log('Saving fields:', fields);
+            console.log('Saving field positions:', updates);
 
-            // Send to server
-            fetch(`/templates/${templateId}/save-fields`, {
-                    method: 'POST',
+            // Send each field update to server
+            let successCount = 0;
+            let errorCount = 0;
+            
+            const savePromises = updates.map(update => {
+                // Find field ID from table
+                const $row = $(`#fields-tbody tr[data-field-name="${update.field_name}"]`);
+                const fieldId = $row.data('field-id');
+                
+                if (!fieldId) {
+                    console.warn(`Field ID not found for: ${update.field_name}`);
+                    errorCount++;
+                    return Promise.resolve();
+                }
+                
+                return $.ajax({
+                    url: `/template-fields/${fieldId}/position`,
+                    method: 'PATCH',
                     headers: {
-                        'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({
-                        fields: fields
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        position_data: update.position_data
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        toastr.success(data.message);
-                    } else {
-                        toastr.error(data.message);
+                }).done(() => {
+                    successCount++;
+                }).fail((xhr) => {
+                    console.error(`Failed to save ${update.field_name}:`, xhr);
+                    if (xhr.responseJSON) {
+                        console.error('Validation errors:', xhr.responseJSON);
                     }
-                })
-                .catch(error => {
-                    toastr.error('Failed to save fields: ' + error.message);
+                    errorCount++;
                 });
+            });
+
+            Promise.all(savePromises).then(() => {
+                if (errorCount === 0) {
+                    toastr.success(`All ${successCount} field positions saved successfully!`);
+                } else {
+                    toastr.warning(`Saved ${successCount} fields, ${errorCount} failed`);
+                }
+            });
         });
 
         // Download preview as PDF with dummy data

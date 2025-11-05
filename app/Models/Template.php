@@ -48,6 +48,76 @@ class Template extends Model
                 \Storage::disk('public')->delete($template->background);
             }
         });
+
+        // Initialize predefined fields when creating template
+        static::created(function ($template) {
+            $predefinedFields = [
+                [
+                    'field_name' => 'name',
+                    'field_label' => 'Participant Name',
+                    'field_type' => 'text',
+                    'show_in_form' => true,
+                    'show_in_cert' => true,
+                    'is_required' => true,
+                    'is_predefined' => true,
+                    'order' => 1,
+                    'position_data' => [
+                        'x' => 50,
+                        'y' => 50,
+                        'fontSize' => 30,
+                    ]
+                ],
+                [
+                    'field_name' => 'email',
+                    'field_label' => 'Email Address',
+                    'field_type' => 'email',
+                    'show_in_form' => true,
+                    'show_in_cert' => false,
+                    'is_required' => true,
+                    'is_predefined' => true,
+                    'order' => 2,
+                    'position_data' => [
+                        'x' => 50,
+                        'y' => 40,
+                        'fontSize' => 30,
+                    ]
+                ],
+                [
+                    'field_name' => 'event_name',
+                    'field_label' => 'Event Name',
+                    'field_type' => 'text',
+                    'show_in_form' => false,
+                    'show_in_cert' => true,
+                    'is_required' => false,
+                    'is_predefined' => true,
+                    'order' => 3,
+                    'position_data' => [
+                        'x' => 50,
+                        'y' => 30,
+                        'fontSize' => 30,
+                    ]
+                ],
+                [
+                    'field_name' => 'date',
+                    'field_label' => 'Event Date',
+                    'field_type' => 'date',
+                    'show_in_form' => false,
+                    'show_in_cert' => true,
+                    'is_required' => false,
+                    'is_predefined' => true,
+                    'order' => 4,
+                    'position_data' => [
+                        'x' => 50,
+                        'y' => 20,
+                        'fontSize' => 30,
+                    ]
+                ]
+            ];
+            
+            foreach ($predefinedFields as $field) {
+                $template->fields()->create($field);
+            }
+        });
     }
 
     /**
@@ -55,7 +125,31 @@ class Template extends Model
      */
     public function fields(): HasMany
     {
-        return $this->hasMany(TemplateField::class);
+        return $this->hasMany(TemplateField::class)->orderBy('order');
+    }
+
+    /**
+     * Get only fields shown in registration form.
+     */
+    public function formFields(): HasMany
+    {
+        return $this->hasMany(TemplateField::class)->formFields()->orderBy('order');
+    }
+
+    /**
+     * Get only fields shown on certificate.
+     */
+    public function certFields(): HasMany
+    {
+        return $this->hasMany(TemplateField::class)->certificateFields()->orderBy('order');
+    }
+
+    /**
+     * Get fields that need static values (not in form but on cert).
+     */
+    public function staticValueFields(): HasMany
+    {
+        return $this->hasMany(TemplateField::class)->staticValueFields()->orderBy('order');
     }
 
     /**

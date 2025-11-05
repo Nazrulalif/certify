@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web\App;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Registration;
+use App\Services\RegistrationService;
 use Illuminate\Http\Request;
 
 class RegistrationController extends Controller
@@ -13,68 +14,43 @@ class RegistrationController extends Controller
     public function show(string $slug)
     {
         $event = Event::where('slug', $slug)
-            ->with('fields')
+            ->with(['template.formFields'])
             ->firstOrFail();
 
         if (!$event->registration_enabled) {
             abort(403, 'Registration for this event is currently closed.');
         }
 
-        return view('pages.registrations.form', compact('event'));
+        $registrationService = app(RegistrationService::class);
+        $formConfig = $registrationService->getFormConfiguration($event);
+
+        return view('pages.registrations.form', [
+            'event' => $event,
+            'formConfig' => $formConfig,
+        ]);
     }
 
     // Store public registration
     public function store(Request $request, string $slug)
     {
         $event = Event::where('slug', $slug)
-            ->with('fields')
+            ->with(['template.formFields'])
             ->firstOrFail();
 
         if (!$event->registration_enabled) {
             return back()->with('error', 'Registration for this event is currently closed.');
         }
 
-        // Build validation rules dynamically based on event fields
-        $rules = [];
-        foreach ($event->fields as $field) {
-            $fieldRules = [];
-
-            if ($field->required) {
-                $fieldRules[] = 'required';
-            } else {
-                $fieldRules[] = 'nullable';
-            }
-
-            // Add type-specific validation
-            switch ($field->field_type) {
-                case 'email':
-                    $fieldRules[] = 'email';
-                    break;
-                case 'number':
-                    $fieldRules[] = 'numeric';
-                    break;
-                case 'date':
-                    $fieldRules[] = 'date';
-                    break;
-                default:
-                    $fieldRules[] = 'string';
-                    break;
-            }
-
-            $rules[$field->field_name] = implode('|', $fieldRules);
-        }
-
-        $validated = $request->validate($rules);
-
         try {
-            Registration::create([
-                'event_id' => $event->id,
-                'data' => $validated,
-                'status' => 'pending',
-            ]);
+            $registrationService = app(RegistrationService::class);
+            $registration = $registrationService->createRegistration($event, $request->all());
 
             return redirect()->route('register.success')
                 ->with('success', 'Registration submitted successfully!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
         } catch (\Exception $e) {
             return back()->withInput()
                 ->with('error', 'Failed to submit registration: ' . $e->getMessage());
@@ -97,8 +73,9 @@ class RegistrationController extends Controller
                 ->addIndexColumn()
                 ->addColumn('fields', function ($row) use ($event) {
                     $html = '';
-                    foreach ($event->fields as $field) {
-                        $value = $row->getFieldValue($field->field_name) ?? '-';
+                    $formData = $row->form_data ?? [];
+                    foreach ($event->template->formFields as $field) {
+                        $value = $formData[$field->field_name] ?? '-';
                         $html .= '<div class="mb-1"><span class="fw-bold text-gray-600">' . $field->field_label . ':</span> ' . $value . '</div>';
                     }
                     return $html;
@@ -125,7 +102,7 @@ class RegistrationController extends Controller
                 ->make(true);
         }
 
-        $event->load('fields');
+        $event->load(['template.formFields']);
         return view('pages.registrations.index', compact('event'));
     }
 

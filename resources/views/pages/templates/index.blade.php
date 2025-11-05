@@ -126,25 +126,30 @@
                                                 @if ($template->fields->count() > 0)
                                                     <div class="fields-overlay" data-template-id="{{ $template->id }}"
                                                         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
-                                                        @foreach ($template->fields as $field)
-                                                            <div class="field-preview"
-                                                                data-original-x="{{ $field->x }}"
-                                                                data-original-y="{{ $field->y }}"
-                                                                data-original-font-size="{{ $field->font_size }}"
-                                                                style="
-                                                        position: absolute;
-                                                        font-family: {{ $field->font_family }};
-                                                        color: {{ $field->color }};
-                                                        font-weight: {{ $field->bold ? 'bold' : 'normal' }};
-                                                        font-style: {{ $field->italic ? 'italic' : 'normal' }};
-                                                        text-align: {{ $field->text_align }};
-                                                        transform: rotate({{ $field->rotation }}deg);
-                                                        white-space: nowrap;
-                                                        opacity: 0.8;
-                                                        transform-origin: top left;
-                                                    ">
-                                                                {{ $field->field_name }}
-                                                            </div>
+                                                        @foreach ($template->fields->where('show_in_cert', true) as $field)
+                                                            @php
+                                                                $positionData = $field->position_data ?? [];
+                                                            @endphp
+                                                            @if (!empty($positionData) && isset($positionData['x']) && isset($positionData['y']))
+                                                                <div class="field-preview"
+                                                                    data-original-x="{{ $positionData['x'] ?? 0 }}"
+                                                                    data-original-y="{{ $positionData['y'] ?? 0 }}"
+                                                                    data-original-font-size="{{ $positionData['fontSize'] ?? 16 }}"
+                                                                    style="
+                                                            position: absolute;
+                                                            font-family: {{ $positionData['fontFamily'] ?? 'Arial' }};
+                                                            color: {{ $positionData['color'] ?? '#000000' }};
+                                                            font-weight: {{ ($positionData['bold'] ?? false) ? 'bold' : 'normal' }};
+                                                            font-style: {{ ($positionData['italic'] ?? false) ? 'italic' : 'normal' }};
+                                                            text-align: {{ $positionData['textAlign'] ?? 'left' }};
+                                                            transform: rotate({{ $positionData['rotation'] ?? 0 }}deg);
+                                                            white-space: nowrap;
+                                                            opacity: 0.8;
+                                                            transform-origin: top left;
+                                                        ">
+                                                                    {{ $field->field_name }}
+                                                                </div>
+                                                            @endif
                                                         @endforeach
                                                     </div>
                                                 @endif

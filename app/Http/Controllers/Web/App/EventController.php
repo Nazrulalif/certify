@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Template;
 use App\Models\EventField;
+use App\Services\EventConfigurationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -36,12 +37,7 @@ class EventController extends Controller
             'description' => 'nullable|string',
             'template_id' => 'required|exists:templates,id',
             'registration_enabled' => 'boolean',
-            'fields' => 'required|array|min:1',
-            'fields.*.field_name' => 'required|string',
-            'fields.*.field_label' => 'required|string',
-            'fields.*.field_type' => 'required|string',
-            'fields.*.required' => 'boolean',
-            'fields.*.options' => 'nullable|array',
+            'static_values' => 'nullable|array',
         ]);
 
         DB::beginTransaction();
@@ -52,21 +48,9 @@ class EventController extends Controller
                 'description' => $validated['description'] ?? null,
                 'template_id' => $validated['template_id'],
                 'registration_enabled' => $request->boolean('registration_enabled', true),
+                'static_values' => $validated['static_values'] ?? [],
                 'created_by' => Auth::id(),
             ]);
-
-            // Create event fields
-            foreach ($validated['fields'] as $index => $field) {
-                EventField::create([
-                    'event_id' => $event->id,
-                    'field_name' => $field['field_name'],
-                    'field_label' => $field['field_label'],
-                    'field_type' => $field['field_type'],
-                    'required' => $field['required'] ?? false,
-                    'options' => $field['options'] ?? null,
-                    'order' => $index,
-                ]);
-            }
 
             DB::commit();
 
@@ -102,12 +86,7 @@ class EventController extends Controller
             'description' => 'nullable|string',
             'template_id' => 'required|exists:templates,id',
             'registration_enabled' => 'boolean',
-            'fields' => 'required|array|min:1',
-            'fields.*.field_name' => 'required|string',
-            'fields.*.field_label' => 'required|string',
-            'fields.*.field_type' => 'required|string',
-            'fields.*.required' => 'boolean',
-            'fields.*.options' => 'nullable|array',
+            'static_values' => 'nullable|array',
         ]);
 
         DB::beginTransaction();
@@ -118,22 +97,8 @@ class EventController extends Controller
                 'description' => $validated['description'] ?? null,
                 'template_id' => $validated['template_id'],
                 'registration_enabled' => $request->boolean('registration_enabled', true),
+                'static_values' => $validated['static_values'] ?? [],
             ]);
-
-            // Delete old fields and create new ones
-            $event->fields()->delete();
-
-            foreach ($validated['fields'] as $index => $field) {
-                EventField::create([
-                    'event_id' => $event->id,
-                    'field_name' => $field['field_name'],
-                    'field_label' => $field['field_label'],
-                    'field_type' => $field['field_type'],
-                    'required' => $field['required'] ?? false,
-                    'options' => $field['options'] ?? null,
-                    'order' => $index,
-                ]);
-            }
 
             DB::commit();
 
@@ -154,6 +119,135 @@ class EventController extends Controller
                 ->with('success', 'Event deleted successfully!');
         } catch (\Exception $e) {
             return back()->with('error', 'Failed to delete event: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get static value fields for a template (AJAX)
+     */
+    public function getStaticValueFields(Template $template)
+    {
+        try {
+            $eventService = app(EventConfigurationService::class);
+            $fields = $eventService->getStaticValueFields($template);
+
+            return response()->json([
+                'success' => true,
+                'fields' => $fields->map(function ($field) {
+                    return [
+                        'id' => $field->id,
+                        'field_name' => $field->field_name,
+                        'field_label' => $field->field_label,
+                        'field_type' => $field->field_type,
+                    ];
+                }),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get registration form preview for an event (AJAX)
+     */
+    public function getRegistrationFormPreview(Event $event)
+    {
+        try {
+            $eventService = app(EventConfigurationService::class);
+            $formPreview = $eventService->getRegistrationFormPreview($event);
+
+            return response()->json([
+                'success' => true,
+                'fields' => $formPreview,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get registration form preview from template (AJAX) - for event creation
+     */
+    public function getTemplateFormPreview(Template $template)
+    {
+        try {
+            // Get form fields from template
+            $formFields = $template->fields()
+                ->where('show_in_form', true)
+                ->orderBy('order')
+                ->get()
+                ->map(function ($field) {
+                    return [
+                        'field_name' => $field->field_name,
+                        'field_label' => $field->field_label,
+                        'field_type' => $field->field_type,
+                        'is_required' => $field->is_required,
+                        'is_predefined' => $field->is_predefined,
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'fields' => $formFields,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get event configuration summary (AJAX)
+     */
+    public function getConfigurationSummary(Event $event)
+    {
+        try {
+            $eventService = app(EventConfigurationService::class);
+            $summary = $eventService->getEventConfigurationSummary($event);
+
+            return response()->json([
+                'success' => true,
+                'summary' => $summary,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Save static values for event
+     */
+    public function saveStaticValues(Request $request, Event $event)
+    {
+        $request->validate([
+            'static_values' => 'required|array',
+        ]);
+
+        try {
+            $eventService = app(EventConfigurationService::class);
+            $eventService->saveStaticValues($event, $request->static_values);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Static values saved successfully!',
+                'event' => $event->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('registrations', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('event_id')->constrained('events')->onDelete('cascade');
-            $table->json('data'); // stores all form field data as JSON
+            $table->json('form_data'); // stores all form field data as JSON
             $table->string('status')->default('pending'); // pending, approved, rejected
             $table->timestamp('registered_at')->useCurrent();
             $table->softDeletes();

@@ -113,53 +113,64 @@
                 <form action="{{ route('register.store', $event->slug) }}" method="POST">
                     @csrf
 
-                    @foreach ($event->fields as $field)
+                    @foreach ($formConfig['fields'] as $field)
                         <div class="mb-4">
-                            <label for="{{ $field->field_name }}" class="form-label">
-                                {{ $field->field_label }}
-                                @if ($field->required)
+                            <label for="{{ $field['name'] }}" class="form-label">
+                                {{ $field['label'] }}
+                                @if ($field['required'])
                                     <span class="required-asterisk">*</span>
                                 @endif
                             </label>
 
-                            @if ($field->field_type === 'text')
+                            @if ($field['type'] === 'text')
                                 <input type="text"
-                                    class="form-control @error($field->field_name) is-invalid @enderror"
-                                    id="{{ $field->field_name }}" name="{{ $field->field_name }}"
-                                    value="{{ old($field->field_name) }}" {{ $field->required ? 'required' : '' }}>
-                            @elseif ($field->field_type === 'email')
+                                    class="form-control @error($field['name']) is-invalid @enderror"
+                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    value="{{ old($field['name']) }}" 
+                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    {{ $field['required'] ? 'required' : '' }}>
+                            @elseif ($field['type'] === 'email')
                                 <input type="email"
-                                    class="form-control @error($field->field_name) is-invalid @enderror"
-                                    id="{{ $field->field_name }}" name="{{ $field->field_name }}"
-                                    value="{{ old($field->field_name) }}" {{ $field->required ? 'required' : '' }}>
-                            @elseif ($field->field_type === 'number')
+                                    class="form-control @error($field['name']) is-invalid @enderror"
+                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    value="{{ old($field['name']) }}" 
+                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    {{ $field['required'] ? 'required' : '' }}>
+                            @elseif ($field['type'] === 'number')
                                 <input type="number"
-                                    class="form-control @error($field->field_name) is-invalid @enderror"
-                                    id="{{ $field->field_name }}" name="{{ $field->field_name }}"
-                                    value="{{ old($field->field_name) }}" {{ $field->required ? 'required' : '' }}>
-                            @elseif ($field->field_type === 'date')
+                                    class="form-control @error($field['name']) is-invalid @enderror"
+                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    value="{{ old($field['name']) }}" 
+                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    {{ $field['required'] ? 'required' : '' }}>
+                            @elseif ($field['type'] === 'date')
                                 <input type="date"
-                                    class="form-control @error($field->field_name) is-invalid @enderror"
-                                    id="{{ $field->field_name }}" name="{{ $field->field_name }}"
-                                    value="{{ old($field->field_name) }}" {{ $field->required ? 'required' : '' }}>
-                            @elseif ($field->field_type === 'textarea')
-                                <textarea class="form-control @error($field->field_name) is-invalid @enderror" id="{{ $field->field_name }}"
-                                    name="{{ $field->field_name }}" rows="4" {{ $field->required ? 'required' : '' }}>{{ old($field->field_name) }}</textarea>
-                            @elseif ($field->field_type === 'select' && is_array($field->options))
-                                <select class="form-select @error($field->field_name) is-invalid @enderror"
-                                    id="{{ $field->field_name }}" name="{{ $field->field_name }}"
-                                    {{ $field->required ? 'required' : '' }}>
+                                    class="form-control @error($field['name']) is-invalid @enderror"
+                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    value="{{ old($field['name']) }}" 
+                                    {{ $field['required'] ? 'required' : '' }}>
+                            @elseif ($field['type'] === 'textarea')
+                                <textarea class="form-control @error($field['name']) is-invalid @enderror" 
+                                    id="{{ $field['name'] }}"
+                                    name="{{ $field['name'] }}" 
+                                    rows="4" 
+                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    {{ $field['required'] ? 'required' : '' }}>{{ old($field['name']) }}</textarea>
+                            @elseif ($field['type'] === 'select' && isset($field['options']))
+                                <select class="form-select @error($field['name']) is-invalid @enderror"
+                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    {{ $field['required'] ? 'required' : '' }}>
                                     <option value="">Select an option</option>
-                                    @foreach ($field->options as $option)
+                                    @foreach ($field['options'] as $option)
                                         <option value="{{ $option }}"
-                                            {{ old($field->field_name) == $option ? 'selected' : '' }}>
+                                            {{ old($field['name']) == $option ? 'selected' : '' }}>
                                             {{ $option }}
                                         </option>
                                     @endforeach
                                 </select>
                             @endif
 
-                            @error($field->field_name)
+                            @error($field['name'])
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>

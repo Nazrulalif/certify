@@ -20,8 +20,8 @@ class CertificateService
         $event = $registration->event;
         $template = $event->template;
 
-        // Prepare certificate data from registration
-        $certificateData = $registration->data;
+        // Get merged certificate data (static values + form data)
+        $certificateData = $registration->getCertificateData();
 
         return $this->generateCertificate($event, $template, $certificateData, $userId, $registration->id);
     }
@@ -32,7 +32,12 @@ class CertificateService
     public function generateFromManualData(Event $event, array $data, $userId): Certificate
     {
         $template = $event->template;
-        return $this->generateCertificate($event, $template, $data, $userId);
+        
+        // Merge static values from event with manual form data
+        $staticValues = $event->static_values ?? [];
+        $certificateData = array_merge($data, $staticValues);
+        
+        return $this->generateCertificate($event, $template, $certificateData, $userId);
     }
 
     /**
@@ -113,22 +118,30 @@ class CertificateService
         $scaleY = $pdfHeight / $originalHeight;
 
         // Prepare field data for PDF with scaled positions
-        $fields = $template->fields->map(function ($field) use ($data, $scaleX, $scaleY) {
-            return [
-                'field_name' => $field->field_name,
-                'value' => $data[$field->field_name] ?? '',
-                'x' => $field->x * $scaleX,
-                'y' => $field->y * $scaleY,
-                'width' => $field->width * $scaleX,
-                'height' => $field->height * $scaleY,
-                'font_size' => $field->font_size * min($scaleX, $scaleY), // Use min for font to prevent distortion
-                'font_family' => $field->font_family,
-                'color' => $field->color,
-                'alignment' => $field->text_align,
-                'bold' => $field->bold,
-                'italic' => $field->italic,
-            ];
-        });
+        $fields = $template->fields
+            ->filter(function ($field) {
+                // Only include fields that should show on certificate and have position data
+                return $field->show_in_cert && !empty($field->position_data);
+            })
+            ->map(function ($field) use ($data, $scaleX, $scaleY) {
+                // Get position data from JSON structure
+                $positionData = $field->position_data ?? [];
+                
+                return [
+                    'field_name' => $field->field_name,
+                    'value' => $data[$field->field_name] ?? '',
+                    'x' => ($positionData['x'] ?? 0) * $scaleX,
+                    'y' => ($positionData['y'] ?? 0) * $scaleY,
+                    'width' => ($positionData['width'] ?? 100) * $scaleX,
+                    'height' => ($positionData['height'] ?? 20) * $scaleY,
+                    'font_size' => ($positionData['fontSize'] ?? 16) * min($scaleX, $scaleY),
+                    'font_family' => $positionData['fontFamily'] ?? 'Arial',
+                    'color' => $positionData['color'] ?? '#000000',
+                    'alignment' => $positionData['textAlign'] ?? 'left',
+                    'bold' => $positionData['bold'] ?? false,
+                    'italic' => $positionData['italic'] ?? false,
+                ];
+            });
 
         // Convert background to base64 for embedding
         $backgroundBase64 = null;

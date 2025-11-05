@@ -39,7 +39,8 @@ class CertificateController extends Controller
                     return $row->event ? $row->event->name : '-';
                 })
                 ->addColumn('recipient', function ($row) {
-                    return $row->getFieldValue('name') ?? $row->getFieldValue('participant_name') ?? '-';
+                    $data = $row->certificate_data ?? [];
+                    return $data['name'] ?? $data['participant_name'] ?? '-';
                 })
                 ->addColumn('generated_by', function ($row) {
                     return $row->generator ? $row->generator->name : '-';
@@ -65,7 +66,7 @@ class CertificateController extends Controller
 
     public function create()
     {
-        $events = Event::with('template')->get();
+        $events = Event::with('template.formFields')->get();
         return view('pages.certificates.create', compact('events'));
     }
 
@@ -76,9 +77,10 @@ class CertificateController extends Controller
                 ->whereDoesntHave('certificate')
                 ->get()
                 ->map(function ($registration) {
+                    $formData = $registration->form_data ?? [];
                     return [
                         'id' => $registration->id,
-                        'name' => $registration->getFieldValue('name') ?? $registration->getFieldValue('participant_name') ?? 'N/A',
+                        'name' => $formData['name'] ?? $formData['participant_name'] ?? 'N/A',
                         'registered_at' => $registration->registered_at->format('Y-m-d H:i'),
                     ];
                 });
