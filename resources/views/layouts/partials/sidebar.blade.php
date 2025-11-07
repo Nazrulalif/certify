@@ -111,7 +111,7 @@
                     <!--end::Menu separator-->
                     <!--begin::Menu item-->
                     <div class="menu-item px-5">
-                        <a href="{{ route('users.edit', Auth::user()->id) }}" class="menu-link px-5">My Profile</a>
+                        <a href="{{ route('my-profile', Auth::user()->id) }}" class="menu-link px-5">My Profile</a>
                     </div>
                     <!--end::Menu item-->
                     <!--begin::Menu item-->

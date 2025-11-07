@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Web\App\MyProfilController;
 use App\Http\Controllers\Web\Auth\LoginController;
 use App\Http\Controllers\Web\Auth\RegisterController;
 use Illuminate\Support\Facades\Route;
@@ -19,4 +20,8 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     // Logout Route
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    // My Profile Route
+    Route::get('/my-profile', [MyProfilController::class, 'index'])->name('my-profile');
+    Route::put('/my-profile/{id}', [MyProfilController::class, 'update'])->name('my-profile.update');
 });
