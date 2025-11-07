@@ -66,6 +66,11 @@ class RegistrationController extends Controller
     // List registrations for an event (admin only)
     public function index(Request $request, Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to view registrations for this event.');
+        }
+
         if ($request->ajax()) {
             $registrations = $event->registrations()->latest('registered_at');
 
@@ -126,6 +131,11 @@ class RegistrationController extends Controller
     // Update registration status
     public function updateStatus(Event $event, Registration $registration, Request $request)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to update this registration.');
+        }
+
         $request->validate([
             'status' => 'required|in:pending,approved,rejected'
         ]);
@@ -140,6 +150,14 @@ class RegistrationController extends Controller
     // Delete registration
     public function destroy(Event $event, Registration $registration)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this registration.'
+            ], 403);
+        }
+
         try {
             // Check if registration has certificate
             if ($registration->certificate) {
@@ -168,6 +186,14 @@ class RegistrationController extends Controller
      */
     public function bulkDestroy(Request $request, Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete registrations for this event.'
+            ], 403);
+        }
+
         try {
             $ids = $request->input('ids', []);
 

@@ -9,10 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use Laravel\Scout\Searchable;
 
 class Event extends Model
 {
-    use SoftDeletes, HasUuids, HasFactory;
+    use SoftDeletes, HasUuids, HasFactory, Searchable;
     protected $fillable = [
         'name',
         'description',
@@ -27,6 +28,18 @@ class Event extends Model
         'registration_enabled' => 'boolean',
         'static_values' => 'array',
     ];
+
+        /**
+     * Get the indexable data array for the model.
+     *
+     * @return array
+     */
+    public function toSearchableArray() {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+        ];
+    }
 
     protected static function boot()
     {

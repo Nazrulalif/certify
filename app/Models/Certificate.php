@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Scout\Searchable;
 
 class Certificate extends Model
 {
-    use SoftDeletes, HasUuids, HasFactory;
+    use SoftDeletes, HasUuids, HasFactory, Searchable;
 
     protected $fillable = [
         'event_id',
@@ -30,6 +31,18 @@ class Certificate extends Model
         'generated_at' => 'datetime',
         'emailed_at' => 'datetime',
     ];
+
+            /**
+     * Get the indexable data array for the model.
+     *
+     * @return array
+     */
+    public function toSearchableArray() {
+        return [
+            'id' => $this->id,
+            'certificate_number' => $this->certificate_number,
+        ];
+    }
 
     public function event(): BelongsTo
     {
@@ -80,13 +93,13 @@ class Certificate extends Model
         // withTrashed() ensures we check ALL certificates to avoid duplicates
         $lastCertificate = self::withTrashed()
             ->whereYear('created_at', $year)
-            ->where('certificate_number', 'like', "CERT-{$year}-%")
+            ->where('certificate_number', 'like', "CRT-{$year}-%")
             ->orderByRaw('CAST(SUBSTRING(certificate_number, 11) AS UNSIGNED) DESC')
             ->first();
 
         if ($lastCertificate) {
             // Extract the number part from CERT-YYYY-NNNNNN
-            preg_match('/CERT-\d{4}-(\d{6})/', $lastCertificate->certificate_number, $matches);
+            preg_match('/CRT-\d{4}-(\d{6})/', $lastCertificate->certificate_number, $matches);
             $number = isset($matches[1]) ? intval($matches[1]) + 1 : 1;
         } else {
             $number = 1;
@@ -97,7 +110,7 @@ class Certificate extends Model
         $maxAttempts = 100;
 
         do {
-            $certificateNumber = sprintf('CERT-%s-%06d', $year, $number);
+            $certificateNumber = sprintf('CRT-%s-%06d', $year, $number);
 
             // Check if this number exists (including soft deleted)
             $exists = self::withTrashed()
@@ -113,7 +126,7 @@ class Certificate extends Model
         } while ($attempts < $maxAttempts);
 
         // Fallback: use timestamp-based unique number
-        return sprintf('CERT-%s-%06d', $year, time() % 1000000);
+        return sprintf('CRT-%s-%06d', $year, time() % 1000000);
     }
 
     protected static function boot()

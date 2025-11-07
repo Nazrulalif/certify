@@ -31,6 +31,9 @@ class CertificateController extends Controller
     {
         if ($request->ajax()) {
             $certificates = Certificate::with(['event', 'registration', 'generator'])
+                ->whereHas('event', function ($query) {
+                    $query->where('created_by', auth()->id());
+                })
                 ->latest();
 
             return DataTables::of($certificates)
@@ -71,12 +74,21 @@ class CertificateController extends Controller
 
     public function create()
     {
-        $events = Event::with('template.formFields')->get();
+        $events = Event::with('template.formFields')
+            ->where('created_by', auth()->id())
+            ->get();
         return view('pages.certificates.create', compact('events'));
     }
 
     public function getEventRegistrations(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'error' => 'You are not authorized to view this event.',
+            ], 403);
+        }
+
         try {
             $registrations = $event->registrations()
                 ->whereDoesntHave('certificate')
@@ -105,6 +117,20 @@ class CertificateController extends Controller
             'registration_ids' => 'required|array',
             'registration_ids.*' => 'exists:registrations,id',
         ]);
+
+        // Authorization check - verify all registrations belong to user's events
+        $registrations = Registration::with('event')
+            ->whereIn('id', $request->registration_ids)
+            ->get();
+
+        foreach ($registrations as $registration) {
+            if ($registration->event->created_by !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to generate certificates for some registrations.'
+                ], 403);
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -148,6 +174,14 @@ class CertificateController extends Controller
         try {
             $event = Event::findOrFail($request->event_id);
 
+            // Authorization check
+            if ($event->created_by !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to generate certificates for this event.'
+                ], 403);
+            }
+
             $certificate = $this->certificateService->generateFromManualData(
                 $event,
                 $request->data,
@@ -169,6 +203,14 @@ class CertificateController extends Controller
 
     public function regenerate(Certificate $certificate)
     {
+        // Authorization check
+        if ($certificate->event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to regenerate this certificate.'
+            ], 403);
+        }
+
         try {
             $this->certificateService->regenerate($certificate);
 
@@ -186,12 +228,25 @@ class CertificateController extends Controller
 
     public function show(Certificate $certificate)
     {
+        // Authorization check
+        if ($certificate->event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to view this certificate.');
+        }
+
         $certificate->load(['event.template', 'registration', 'generator']);
         return view('pages.certificates.show', compact('certificate'));
     }
 
     public function destroy(Certificate $certificate)
     {
+        // Authorization check
+        if ($certificate->event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to delete this certificate.'
+            ], 403);
+        }
+
         try {
             $certificate->delete();
 
@@ -217,6 +272,20 @@ class CertificateController extends Controller
                     'success' => false,
                     'message' => 'No certificates selected'
                 ], 400);
+            }
+
+            // Authorization check - verify all certificates belong to user's events
+            $certificates = Certificate::with('event')
+                ->whereIn('id', $ids)
+                ->get();
+
+            foreach ($certificates as $certificate) {
+                if ($certificate->event->created_by !== auth()->id()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You are not authorized to delete some certificates.'
+                    ], 403);
+                }
             }
 
             Certificate::whereIn('id', $ids)->delete();
@@ -248,8 +317,20 @@ class CertificateController extends Controller
                 ], 400);
             }
 
-            // Get certificates
-            $certificates = Certificate::whereIn('id', $ids)->get();
+            // Get certificates with authorization check
+            $certificates = Certificate::with('event')
+                ->whereIn('id', $ids)
+                ->get();
+
+            // Verify authorization for all certificates
+            foreach ($certificates as $certificate) {
+                if ($certificate->event->created_by !== auth()->id()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You are not authorized to download some certificates.'
+                    ], 403);
+                }
+            }
 
             if ($certificates->isEmpty()) {
                 return response()->json([
@@ -315,11 +396,10 @@ class CertificateController extends Controller
             abort(403, 'You must be logged in to download certificates. Please contact the certificate issuer if you need a copy.');
         }
 
-        // Optional: Check if user is authorized (owner or admin)
-        // Uncomment to restrict downloads to certificate generator or admin only
-        // if (Auth::id() !== $certificate->generated_by && !Auth::user()->isRoot()) {
-        //     abort(403, 'You are not authorized to download this certificate.');
-        // }
+        // Authorization check
+        if ($certificate->event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to download this certificate.');
+        }
 
         if (!$certificate->pdf_path || !Storage::disk('public')->exists($certificate->pdf_path)) {
             abort(404, 'Certificate PDF not found');
@@ -331,6 +411,11 @@ class CertificateController extends Controller
 
     public function preview(Certificate $certificate)
     {
+        // Authorization check
+        if ($certificate->event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to preview this certificate.');
+        }
+
         if (!$certificate->pdf_path || !Storage::disk('public')->exists($certificate->pdf_path)) {
             abort(404, 'Certificate PDF not found');
         }
@@ -343,6 +428,14 @@ class CertificateController extends Controller
      */
     public function downloadTemplate(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to download template for this event.'
+            ], 403);
+        }
+
         try {
             $template = $event->template;
             
@@ -469,6 +562,15 @@ class CertificateController extends Controller
 
         try {
             $event = Event::with('template.formFields')->findOrFail($request->event_id);
+
+            // Authorization check
+            if ($event->created_by !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to import certificates for this event.'
+                ], 403);
+            }
+
             $file = $request->file('excel_file');
 
             // Load spreadsheet
@@ -629,9 +731,17 @@ class CertificateController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
             $event = Event::findOrFail($request->event_id);
+
+            // Authorization check
+            if ($event->created_by !== auth()->id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You are not authorized to generate certificates for this event.'
+                ], 403);
+            }
+
+            DB::beginTransaction();
             $rows = $request->data;
             $certificates = [];
             $errors = [];

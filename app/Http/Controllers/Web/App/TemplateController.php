@@ -18,6 +18,7 @@ class TemplateController extends Controller
     public function index()
     {
         $templates = Template::with('creator')
+            ->where('created_by', auth()->id())
             ->withCount('fields')
             ->latest()
             ->paginate(6);
@@ -84,6 +85,11 @@ class TemplateController extends Controller
      */
     public function edit(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to edit this template.');
+        }
+
         $template->load('fields');
         return view('pages.templates.edit', compact('template'));
     }
@@ -93,6 +99,11 @@ class TemplateController extends Controller
      */
     public function update(Request $request, Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to update this template.');
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'background' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',
@@ -133,6 +144,14 @@ class TemplateController extends Controller
      */
     public function saveFields(Request $request, Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this template.',
+            ], 403);
+        }
+
         $request->validate([
             'fields' => 'required|array',
             'fields.*.field_name' => 'required|string',
@@ -180,6 +199,14 @@ class TemplateController extends Controller
      */
     public function addField(Request $request, Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this template.',
+            ], 403);
+        }
+
         $request->validate([
             'field_name' => 'required|string|max:255',
             'field_label' => 'required|string|max:255',
@@ -211,6 +238,14 @@ class TemplateController extends Controller
      */
     public function updateField(Request $request, TemplateField $field)
     {
+        // Authorization check
+        if ($field->template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this template.',
+            ], 403);
+        }
+
         $request->validate([
             'field_label' => 'sometimes|string|max:255',
             'field_type' => 'sometimes|in:text,email,date,number,textarea',
@@ -241,6 +276,14 @@ class TemplateController extends Controller
      */
     public function updateFieldPosition(Request $request, TemplateField $field)
     {
+        // Authorization check
+        if ($field->template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this template.',
+            ], 403);
+        }
+
         $request->validate([
             'position_data' => 'required|array',
             'position_data.x' => 'sometimes|numeric',
@@ -278,6 +321,14 @@ class TemplateController extends Controller
      */
     public function deleteField(TemplateField $field)
     {
+        // Authorization check
+        if ($field->template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this template.',
+            ], 403);
+        }
+
         try {
             $fieldService = app(TemplateFieldService::class);
             $fieldService->deleteField($field);
@@ -299,6 +350,14 @@ class TemplateController extends Controller
      */
     public function getCanvasFields(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this template.',
+            ], 403);
+        }
+
         try {
             $fieldService = app(TemplateFieldService::class);
             $fields = $fieldService->getCanvasFields($template);
@@ -320,6 +379,14 @@ class TemplateController extends Controller
      */
     public function getFormFields(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this template.',
+            ], 403);
+        }
+
         try {
             $fieldService = app(TemplateFieldService::class);
             $fields = $fieldService->getFormFields($template);
@@ -341,6 +408,11 @@ class TemplateController extends Controller
      */
     public function destroy(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to delete this template.');
+        }
+
         try {
             // Check if template has events
             $eventsCount = $template->events()->count();
@@ -368,6 +440,11 @@ class TemplateController extends Controller
      */
     public function setDefault(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to modify this template.');
+        }
+
         DB::beginTransaction();
         try {
             // Unset all defaults
@@ -391,6 +468,11 @@ class TemplateController extends Controller
      */
     public function downloadPreview(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to preview this template.');
+        }
+
         try {
             // Load only certificate fields (show_in_cert = true)
             $template->load(['fields' => function ($query) {

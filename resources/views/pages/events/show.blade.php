@@ -79,7 +79,6 @@
                     </div>
                 </div>
             </div>
-
             <!--begin::Registration Fields-->
             <div class="card mb-6">
                 <div class="card-header">
@@ -93,11 +92,13 @@
                                     <th>Field Label</th>
                                     <th>Field Name</th>
                                     <th>Type</th>
+                                    <th>In Cert</th>
+                                    <th>In Form</th>
                                     <th>Required</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse ($event->fields as $field)
+                                @forelse ($event->template->fields as $field)
                                     <tr>
                                         <td class="fw-bold">{{ $field->field_label }}</td>
                                         <td class="text-gray-600">{{ $field->field_name }}</td>
@@ -105,7 +106,33 @@
                                             <span class="badge badge-light-info">{{ ucfirst($field->field_type) }}</span>
                                         </td>
                                         <td>
-                                            @if ($field->required)
+                                            @if ($field->show_in_cert)
+                                                <i class="ki-duotone ki-check-circle fs-2 text-success">
+                                                    <span class="path1"></span>
+                                                    <span class="path2"></span>
+                                                </i>
+                                            @else
+                                                <i class="ki-duotone ki-cross-circle fs-2 text-gray-400">
+                                                    <span class="path1"></span>
+                                                    <span class="path2"></span>
+                                                </i>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($field->show_in_form)
+                                                <i class="ki-duotone ki-check-circle fs-2 text-success">
+                                                    <span class="path1"></span>
+                                                    <span class="path2"></span>
+                                                </i>
+                                            @else
+                                                <i class="ki-duotone ki-cross-circle fs-2 text-gray-400">
+                                                    <span class="path1"></span>
+                                                    <span class="path2"></span>
+                                                </i>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($field->is_required)
                                                 <i class="ki-duotone ki-check-circle fs-2 text-success">
                                                     <span class="path1"></span>
                                                     <span class="path2"></span>

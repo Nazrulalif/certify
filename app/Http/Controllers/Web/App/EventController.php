@@ -16,6 +16,7 @@ class EventController extends Controller
     public function index()
     {
         $events = Event::with(['template', 'creator'])
+            ->where('created_by', auth()->id())
             ->latest()
             ->paginate(12);
 
@@ -24,7 +25,10 @@ class EventController extends Controller
 
     public function create()
     {
-        $templates = Template::orderBy('is_default', 'desc')->orderBy('name')->get();
+        $templates = Template::where('created_by', auth()->id())
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
         $fieldTypes = EventField::getFieldTypes();
 
         return view('pages.events.create', compact('templates', 'fieldTypes'));
@@ -65,6 +69,11 @@ class EventController extends Controller
 
     public function show(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to view this event.');
+        }
+
         $event->load(['template', 'creator', 'fields', 'registrations']);
 
         return view('pages.events.show', compact('event'));
@@ -72,7 +81,15 @@ class EventController extends Controller
 
     public function edit(Event $event)
     {
-        $templates = Template::orderBy('is_default', 'desc')->orderBy('name')->get();
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to edit this event.');
+        }
+
+        $templates = Template::where('created_by', auth()->id())
+            ->orderBy('is_default', 'desc')
+            ->orderBy('name')
+            ->get();
         $fieldTypes = EventField::getFieldTypes();
         $event->load('fields');
 
@@ -81,6 +98,11 @@ class EventController extends Controller
 
     public function update(Request $request, Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to update this event.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -113,6 +135,11 @@ class EventController extends Controller
 
     public function destroy(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to delete this event.');
+        }
+
         try {
             // Check if event has registrations
             $registrationsCount = $event->registrations()->count();
@@ -139,6 +166,14 @@ class EventController extends Controller
      */
     public function getStaticValueFields(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this template.',
+            ], 403);
+        }
+
         try {
             $eventService = app(EventConfigurationService::class);
             $fields = $eventService->getStaticValueFields($template);
@@ -167,6 +202,14 @@ class EventController extends Controller
      */
     public function getRegistrationFormPreview(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this event.',
+            ], 403);
+        }
+
         try {
             $eventService = app(EventConfigurationService::class);
             $formPreview = $eventService->getRegistrationFormPreview($event);
@@ -188,6 +231,14 @@ class EventController extends Controller
      */
     public function getTemplateFormPreview(Template $template)
     {
+        // Authorization check
+        if ($template->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this template.',
+            ], 403);
+        }
+
         try {
             // Get form fields from template
             $formFields = $template->fields()
@@ -221,6 +272,14 @@ class EventController extends Controller
      */
     public function getConfigurationSummary(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to view this event.',
+            ], 403);
+        }
+
         try {
             $eventService = app(EventConfigurationService::class);
             $summary = $eventService->getEventConfigurationSummary($event);
@@ -242,6 +301,14 @@ class EventController extends Controller
      */
     public function saveStaticValues(Request $request, Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are not authorized to modify this event.',
+            ], 403);
+        }
+
         $request->validate([
             'static_values' => 'required|array',
         ]);
@@ -265,6 +332,11 @@ class EventController extends Controller
 
     public function toggleRegistration(Event $event)
     {
+        // Authorization check
+        if ($event->created_by !== auth()->id()) {
+            abort(403, 'You are not authorized to modify this event.');
+        }
+
         $event->update([
             'registration_enabled' => !$event->registration_enabled
         ]);

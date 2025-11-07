@@ -8,10 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 class Template extends Model
 {
-    use SoftDeletes, HasUuids, HasFactory;
+    use SoftDeletes, HasUuids, HasFactory, Searchable;
 
     /**
      * The attributes that are mass assignable.
@@ -34,6 +35,18 @@ class Template extends Model
     protected $casts = [
         'is_default' => 'boolean',
     ];
+
+        /**
+     * Get the indexable data array for the model.
+     *
+     * @return array
+     */
+    public function toSearchableArray() {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+        ];
+    }
 
     /**
      * Bootstrap the model and its traits.
