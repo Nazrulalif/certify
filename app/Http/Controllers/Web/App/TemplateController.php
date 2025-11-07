@@ -342,6 +342,12 @@ class TemplateController extends Controller
     public function destroy(Template $template)
     {
         try {
+            // Check if template has events
+            $eventsCount = $template->events()->count();
+            if ($eventsCount > 0) {
+                return back()->with('error', "Cannot delete template. It is being used by {$eventsCount} event(s). Please delete the events first.");
+            }
+
             // Delete background image
             if ($template->background) {
                 Storage::disk('public')->delete($template->background);

@@ -141,6 +141,14 @@ class RegistrationController extends Controller
     public function destroy(Event $event, Registration $registration)
     {
         try {
+            // Check if registration has certificate
+            if ($registration->certificate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot delete registration. A certificate has been generated for this registration. Please delete the certificate first.'
+                ], 400);
+            }
+
             $registration->delete();
 
             return response()->json([
@@ -167,6 +175,19 @@ class RegistrationController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'No registrations selected for deletion'
+                ], 400);
+            }
+
+            // Check if any registration has certificate
+            $registrationsWithCerts = Registration::whereIn('id', $ids)
+                ->where('event_id', $event->id)
+                ->has('certificate')
+                ->count();
+
+            if ($registrationsWithCerts > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete {$registrationsWithCerts} registration(s) that have certificates. Please delete the certificates first."
                 ], 400);
             }
 

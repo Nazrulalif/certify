@@ -114,6 +114,18 @@ class EventController extends Controller
     public function destroy(Event $event)
     {
         try {
+            // Check if event has registrations
+            $registrationsCount = $event->registrations()->count();
+            if ($registrationsCount > 0) {
+                return back()->with('error', "Cannot delete event. It has {$registrationsCount} registration(s). Please delete the registrations first.");
+            }
+
+            // Check if event has certificates
+            $certificatesCount = $event->certificates()->count();
+            if ($certificatesCount > 0) {
+                return back()->with('error', "Cannot delete event. It has {$certificatesCount} certificate(s). Please delete the certificates first.");
+            }
+
             $event->delete();
             return redirect()->route('events.index')
                 ->with('success', 'Event deleted successfully!');

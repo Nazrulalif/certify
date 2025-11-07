@@ -777,6 +777,114 @@ Body: { ids: [uuid1, uuid2, uuid3, ...] }
 
 ---
 
+## Data Integrity & Cascade Delete Protection ✅ COMPLETE
+
+### Overview
+The system implements **cascade delete protection** to prevent deletion of parent records that have associated child data. This ensures data integrity and prevents "orphaned" records or broken relationships.
+
+### Protection Rules
+
+#### **1. Templates → Events**
+- ❌ **Cannot delete template** if it has associated events
+- ✅ Must delete all events using the template first
+- Error message: *"Cannot delete template. It is being used by X event(s). Please delete the events first."*
+
+#### **2. Events → Registrations & Certificates**
+- ❌ **Cannot delete event** if it has registrations
+- ❌ **Cannot delete event** if it has certificates
+- ✅ Must delete all registrations and certificates first
+- Error messages:
+  - *"Cannot delete event. It has X registration(s). Please delete the registrations first."*
+  - *"Cannot delete event. It has X certificate(s). Please delete the certificates first."*
+
+#### **3. Registrations → Certificates**
+- ❌ **Cannot delete registration** if certificate has been generated
+- ✅ Must delete certificate first
+- Error message: *"Cannot delete registration. A certificate has been generated for this registration. Please delete the certificate first."*
+- **Bulk delete**: Checks all selected registrations and prevents deletion if any have certificates
+
+#### **4. Users → Templates, Events, Certificates**
+- ❌ **Cannot delete user** if they created templates
+- ❌ **Cannot delete user** if they created events
+- ❌ **Cannot delete user** if they generated certificates
+- ❌ **Cannot delete own account** (current logged-in user)
+- ✅ Must delete or reassign all user's data first
+- Error messages:
+  - *"You cannot delete your own account"*
+  - *"Cannot delete user. User has created X template(s). Please delete or reassign the templates first."*
+  - *"Cannot delete user. User has created X event(s). Please delete or reassign the events first."*
+  - *"Cannot delete user. User has generated X certificate(s). Please delete or reassign the certificates first."*
+- **Bulk delete**: Shows names of users that cannot be deleted
+
+### Implementation Details
+
+#### Controller Methods Updated:
+1. **TemplateController@destroy** - Checks `events` count
+2. **EventController@destroy** - Checks `registrations` and `certificates` count
+3. **RegistrationController@destroy** - Checks `certificate` relationship
+4. **RegistrationController@bulkDestroy** - Checks certificates for all selected
+5. **UsersController@destroy** - Checks `templates`, `events`, and `generatedCertificates` count
+6. **UsersController@bulk_destroy** - Checks all relationships for selected users
+
+#### User Model Relationships Added:
+```php
+public function templates() // hasMany Template (created_by)
+public function events() // hasMany Event (created_by)
+public function generatedCertificates() // hasMany Certificate (generated_by)
+```
+
+### Database Relationships
+
+```
+User (created_by/generated_by)
+  ├── hasMany → Templates
+  ├── hasMany → Events
+  └── hasMany → Certificates
+
+Template
+  └── hasMany → Events
+
+Event
+  ├── hasMany → Registrations
+  └── hasMany → Certificates
+
+Registration
+  └── hasOne → Certificate
+```
+
+### Deletion Hierarchy
+
+**Correct deletion order (child to parent):**
+1. Delete **Certificates** first
+2. Delete **Registrations** (if no certificates)
+3. Delete **Events** (if no registrations or certificates)
+4. Delete **Templates** (if no events)
+5. Delete **Users** (if no templates, events, or certificates)
+
+### User Experience
+
+**Before deletion:**
+- System checks for child records
+- If found, shows user-friendly error message
+- Displays count of blocking records
+- Guides user on what to delete first
+
+**After protection:**
+- Data integrity maintained
+- No orphaned records
+- Clear error messages
+- Prevents accidental data loss
+
+### Benefits
+
+✅ **Data Integrity** - No broken relationships or missing data  
+✅ **User Guidance** - Clear messages about dependencies  
+✅ **Prevent Accidents** - Stops unintended deletions  
+✅ **Audit Trail** - Preserves created_by/generated_by information  
+✅ **Consistent Behavior** - Same protection for single & bulk delete
+
+---
+
 ## Phase 6: Additional Features
 
 ### Settings (Root Only)
@@ -1153,7 +1261,7 @@ GET    /events/{id}/certificate-preview
 
 ## Current Progress
 
-**Last Updated**: November 5, 2025  
+**Last Updated**: November 7, 2025  
 **Current Phase**: Phase 5.6 - Bulk Operations ✅ **COMPLETE (100%)**  
 **Next Steps**:
 
@@ -1161,10 +1269,11 @@ GET    /events/{id}/certificate-preview
 2. ✅ Phase 5 Complete - Public verification with QR scanner
 3. ✅ Phase 5.5 Complete - Excel import/export functionality
 4. ✅ Phase 5.6 Complete - Bulk download (ZIP) & bulk delete
-5. ⏳ Email delivery system with queue
-6. ⏳ Certificate preview modal
-7. ⏳ User management (Root only)
-8. ⏳ Reports & Analytics
+5. ✅ Data Integrity Protection - Cascade delete prevention
+6. ⏳ Email delivery system with queue
+7. ⏳ Certificate preview modal
+8. ⏳ User management (Root only)
+9. ⏳ Reports & Analytics
 
 ---
 

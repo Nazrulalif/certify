@@ -1,166 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
+@extends('layouts.form')
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - {{ $event->name }}</title>
+@push('title')
+    Register - {{ $event->name }}
+@endpush
 
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+@section('content')
+<div class="d-flex flex-center flex-column flex-lg-row-fluid">
+    <!-- Wrapper -->
+    <div class="w-lg-600px p-4 p-lg-10">
 
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 40px 0;
-        }
+        <!-- Card -->
+        <div class="card shadow-sm border-0 rounded-3">
 
-        .registration-container {
-            max-width: 700px;
-            margin: 0 auto;
-        }
+            <!-- Card Header -->
+            <div class="card-header bg-secondary text-center py-5 border-0 rounded-top-3 flex-column align-items-center">
+                <h1 class="card-title text-dark fs-2 fw-bold mb-1 text-center">{{ $event->name }}</h1>
 
-        .registration-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        .card-header-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        .card-body-custom {
-            padding: 40px;
-        }
-
-        .form-label {
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 8px;
-        }
-
-        .form-control,
-        .form-select {
-            border-radius: 10px;
-            border: 2px solid #e0e0e0;
-            padding: 12px 16px;
-            transition: all 0.3s;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-
-        .btn-submit {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 14px 40px;
-            font-weight: 600;
-            color: white;
-            width: 100%;
-            transition: all 0.3s;
-        }
-
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .required-asterisk {
-            color: #e74c3c;
-        }
-
-        .event-description {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="registration-container">
-        <div class="registration-card">
-            <div class="card-header-custom">
-                <h1 class="h3 mb-2">{{ $event->name }}</h1>
-                @if ($event->description)
-                    <p class="mb-0 opacity-90">{{ $event->description }}</p>
+                @if($event->description)
+                    <p class="text-dark-50 mb-0">{{ $event->description }}</p>
                 @endif
             </div>
 
-            <div class="card-body-custom">
-                @if (session('error'))
-                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <strong>Error!</strong> {{ session('error') }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                @endif
+            <!-- Card Body -->
+            <div class="card-body p-5 p-lg-10">
 
-                <form action="{{ route('register.store', $event->slug) }}" method="POST">
+                <form id="form" action="{{ route('register.store', $event->slug) }}" method="POST" class="w-100">
                     @csrf
 
                     @foreach ($formConfig['fields'] as $field)
                         <div class="mb-4">
-                            <label for="{{ $field['name'] }}" class="form-label">
+                            <label class="form-label fw-semibold text-dark">
                                 {{ $field['label'] }}
                                 @if ($field['required'])
-                                    <span class="required-asterisk">*</span>
+                                    <span class="text-danger">*</span>
                                 @endif
                             </label>
 
+                            {{-- TEXT --}}
                             @if ($field['type'] === 'text')
                                 <input type="text"
-                                    class="form-control @error($field['name']) is-invalid @enderror"
-                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
-                                    value="{{ old($field['name']) }}" 
-                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    name="{{ $field['name'] }}"
+                                    id="{{ $field['name'] }}"
+                                    class="form-control form-control-lg @error($field['name']) is-invalid @enderror"
+                                    value="{{ old($field['name']) }}"
+                                    placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
                                     {{ $field['required'] ? 'required' : '' }}>
+
+                            {{-- EMAIL --}}
                             @elseif ($field['type'] === 'email')
                                 <input type="email"
-                                    class="form-control @error($field['name']) is-invalid @enderror"
-                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
-                                    value="{{ old($field['name']) }}" 
-                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    name="{{ $field['name'] }}"
+                                    id="{{ $field['name'] }}"
+                                    class="form-control form-control-lg @error($field['name']) is-invalid @enderror"
+                                    value="{{ old($field['name']) }}"
+                                    placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
                                     {{ $field['required'] ? 'required' : '' }}>
+
+                            {{-- NUMBER --}}
                             @elseif ($field['type'] === 'number')
                                 <input type="number"
-                                    class="form-control @error($field['name']) is-invalid @enderror"
-                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
-                                    value="{{ old($field['name']) }}" 
-                                    placeholder="{{ $field['placeholder'] ?? '' }}"
+                                    name="{{ $field['name'] }}"
+                                    id="{{ $field['name'] }}"
+                                    class="form-control form-control-lg @error($field['name']) is-invalid @enderror"
+                                    value="{{ old($field['name']) }}"
+                                    placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
                                     {{ $field['required'] ? 'required' : '' }}>
+
+                            {{-- DATE --}}
                             @elseif ($field['type'] === 'date')
                                 <input type="date"
-                                    class="form-control @error($field['name']) is-invalid @enderror"
-                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
-                                    value="{{ old($field['name']) }}" 
-                                    {{ $field['required'] ? 'required' : '' }}>
-                            @elseif ($field['type'] === 'textarea')
-                                <textarea class="form-control @error($field['name']) is-invalid @enderror" 
+                                    name="{{ $field['name'] }}"
                                     id="{{ $field['name'] }}"
-                                    name="{{ $field['name'] }}" 
-                                    rows="4" 
-                                    placeholder="{{ $field['placeholder'] ?? '' }}"
-                                    {{ $field['required'] ? 'required' : '' }}>{{ old($field['name']) }}</textarea>
-                            @elseif ($field['type'] === 'select' && isset($field['options']))
-                                <select class="form-select @error($field['name']) is-invalid @enderror"
-                                    id="{{ $field['name'] }}" name="{{ $field['name'] }}"
+                                    class="form-control form-control-lg @error($field['name']) is-invalid @enderror"
+                                    value="{{ old($field['name']) }}"
                                     {{ $field['required'] ? 'required' : '' }}>
-                                    <option value="">Select an option</option>
+
+                            {{-- TEXTAREA --}}
+                            @elseif ($field['type'] === 'textarea')
+                                <textarea
+                                    name="{{ $field['name'] }}"
+                                    id="{{ $field['name'] }}"
+                                    class="form-control form-control-lg @error($field['name']) is-invalid @enderror"
+                                    rows="4"
+                                    placeholder="{{ $field['placeholder'] ?? $field['label'] }}"
+                                    {{ $field['required'] ? 'required' : '' }}>{{ old($field['name']) }}</textarea>
+
+                            {{-- SELECT --}}
+                            @elseif ($field['type'] === 'select' && isset($field['options']))
+                                <select
+                                    name="{{ $field['name'] }}"
+                                    id="{{ $field['name'] }}"
+                                    class="form-select form-select-lg @error($field['name']) is-invalid @enderror"
+                                    {{ $field['required'] ? 'required' : '' }}>
+                                    <option value="">Select {{ $field['label'] }}</option>
                                     @foreach ($field['options'] as $option)
                                         <option value="{{ $option }}"
                                             {{ old($field['name']) == $option ? 'selected' : '' }}>
@@ -171,42 +103,41 @@
                             @endif
 
                             @error($field['name'])
-                                <div class="invalid-feedback">{{ $message }}</div>
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
                         </div>
                     @endforeach
 
-                    <div class="mt-5">
-                        <button type="submit" class="btn btn-submit">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
-                                class="bi bi-check-circle me-2" viewBox="0 0 16 16"
-                                style="display: inline-block; vertical-align: middle;">
-                                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z" />
-                                <path
-                                    d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z" />
-                            </svg>
-                            Submit Registration
+                    <!-- Submit -->
+                    <div class="text-center pt-4">
+                        <button type="submit" id="submit_form" class="btn btn-primary btn-lg w-100">
+                            <span class="indicator-label">
+                                <i class="ki-duotone ki-check-circle fs-2 me-2"></i>
+                                Submit Registration
+                            </span>
+                            <span class="indicator-progress">
+                                Please wait...
+                                <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                            </span>
                         </button>
+
+                        <div class="mt-4 text-muted small">
+                            <span class="text-danger">*</span> Required fields
+                        </div>
                     </div>
 
-                    <div class="text-center mt-3">
-                        <small class="text-muted">
-                            <span class="required-asterisk">*</span> Required fields
-                        </small>
-                    </div>
                 </form>
+
             </div>
         </div>
 
-        <div class="text-center mt-4">
-            <p class="text-white mb-0">
-                <small>&copy; {{ date('Y') }} Certificate Generator. All rights reserved.</small>
-            </p>
+        <!-- Footer -->
+        <div class="text-center mt-5">
+            <span class="text-white fw-semibold fs-6">
+                &copy; {{ date('Y') }} {{ config('app.name') }}. All rights reserved.
+            </span>
         </div>
+
     </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-
-</html>
+</div>
+@endsection

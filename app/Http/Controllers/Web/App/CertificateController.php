@@ -44,7 +44,7 @@ class CertificateController extends Controller
                     return $row->event ? $row->event->name : '-';
                 })
                 ->addColumn('recipient', function ($row) {
-                    $data = $row->certificate_data ?? [];
+                    $data = $row->data ?? [];
                     return $data['name'] ?? $data['participant_name'] ?? '-';
                 })
                 ->addColumn('generated_by', function ($row) {

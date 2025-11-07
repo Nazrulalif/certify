@@ -135,6 +135,42 @@ class UsersController extends Controller
     {
         try {
             $user = User::findOrFail($id);
+
+            // Prevent deleting current user
+            if ($user->id === Auth::id()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You cannot delete your own account'
+                ], 400);
+            }
+
+            // Check if user has templates
+            $templatesCount = $user->templates()->count();
+            if ($templatesCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete user. User has created {$templatesCount} template(s). Please delete or reassign the templates first."
+                ], 400);
+            }
+
+            // Check if user has events
+            $eventsCount = $user->events()->count();
+            if ($eventsCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete user. User has created {$eventsCount} event(s). Please delete or reassign the events first."
+                ], 400);
+            }
+
+            // Check if user has generated certificates
+            $certificatesCount = $user->generatedCertificates()->count();
+            if ($certificatesCount > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cannot delete user. User has generated {$certificatesCount} certificate(s). Please delete or reassign the certificates first."
+                ], 400);
+            }
+
             $user->delete();
 
             return response()->json([
@@ -222,6 +258,30 @@ class UsersController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'You cannot delete your own account'
+                ], 400);
+            }
+
+            // Check if any user has templates, events, or certificates
+            $usersWithData = User::whereIn('id', $ids)
+                ->where(function($query) {
+                    $query->has('templates')
+                          ->orHas('events')
+                          ->orHas('generatedCertificates');
+                })
+                ->get();
+
+            if ($usersWithData->isNotEmpty()) {
+                $userNames = $usersWithData->pluck('name')->take(3)->implode(', ');
+                $remaining = $usersWithData->count() - 3;
+                $message = "Cannot delete user(s): {$userNames}";
+                if ($remaining > 0) {
+                    $message .= " and {$remaining} other(s)";
+                }
+                $message .= ". They have created templates, events, or generated certificates. Please delete or reassign their data first.";
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $message
                 ], 400);
             }
 

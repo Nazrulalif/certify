@@ -21,7 +21,7 @@
         </div>
 
         <!--begin::Login options-->
-        <div class="row g-3 mb-9">
+        {{-- <div class="row g-3 mb-9">
             <a href="#" class="btn btn-outline btn-text-gray-700 btn-active-color-primary bg-state-light w-100">
                 <img alt="Logo" src="{{ asset('/assets/media/svg/brand-logos/google-icon.svg') }}"
                     class="h-15px me-3" />
@@ -31,7 +31,7 @@
         <!--begin::Separator-->
         <div class="separator separator-content my-14">
             <span class="w-125px fw-semibold fs-7 text-gray-500">Or with email</span>
-        </div>
+        </div> --}}
         <!--begin::Input group-->
         <div class="fv-row mb-8">
             <input type="email" placeholder="Email" name="email" autocomplete="email" required autofocus
@@ -92,6 +92,24 @@
                 </a>
             </div>
             <!--end::Sign up link-->
+
+            <!--begin::Separator-->
+            <div class="separator separator-content my-10">
+                <span class="w-200px fw-semibold fs-7 text-gray-500">Verify Certificate</span>
+            </div>
+            <!--end::Separator-->
+
+            <!--begin::Verify certificate link-->
+            <div class="text-center">
+                <a href="{{ route('verify.index') }}" class="btn btn-flex btn-outline btn-outline-dashed btn-outline-primary btn-active-light-primary w-100">
+                    <i class="ki-duotone ki-shield-tick fs-2 me-2">
+                        <span class="path1"></span>
+                        <span class="path2"></span>
+                    </i>
+                    Verify Certificate Authenticity
+                </a>
+            </div>
+            <!--end::Verify certificate link-->
     </form>
     <!--end::Form-->
 @endsection

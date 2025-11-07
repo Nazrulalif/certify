@@ -20,11 +20,11 @@
     <!--begin::Fonts(mandatory for all pages)-->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
     <!--end::Fonts-->
-
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <!--begin::Vendor Stylesheets(used for this page only)-->
     @stack('styles')
     <!--end::Vendor Stylesheets-->
-
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <!--begin::Global Stylesheets Bundle(mandatory for all pages)-->
     <link href="{{ asset('assets/plugins/global/plugins.bundle.css') }}" rel="stylesheet" type="text/css" />
     <link href="{{ asset('assets/css/style.bundle.css') }}" rel="stylesheet" type="text/css" />
@@ -72,8 +72,15 @@
             [data-bs-theme="dark"] body {
                 background-image: url('{{ asset('assets/media/auth/bg1-dark.jpg') }}')
             }
+
+            .logo-font {
+                font-family: "Lilita One", sans-serif;
+                font-weight: 200;
+                font-style: normal;
+            }
         </style>
         <!--end::Page bg image-->
+        
         <!--begin::Authentication - Sign-in -->
         <div class="d-flex flex-column flex-column-fluid flex-lg-row">
             @yield('content')

@@ -20,7 +20,7 @@
     <!--begin::Fonts(mandatory for all pages)-->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
     <!--end::Fonts-->
-    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
+
     <!--begin::Vendor Stylesheets(used for this page only)-->
     @stack('styles')
     <!--end::Vendor Stylesheets-->
@@ -66,11 +66,11 @@
         <!--begin::Page bg image-->
         <style>
             body {
-                background-image: url('{{ asset('assets/media/auth/bg1.jpg') }}');
+                background-image: url('{{ asset('assets/media/auth/bg6.jpg') }}');
             }
 
             [data-bs-theme="dark"] body {
-                background-image: url('{{ asset('assets/media/auth/bg1-dark.jpg') }}')
+                background-image: url('{{ asset('assets/media/auth/bg6-dark.jpg') }}')
             }
 
             .logo-font {
@@ -82,41 +82,7 @@
         <!--end::Page bg image-->
         <!--begin::Authentication - Sign-in -->
         <div class="d-flex flex-column flex-column-fluid flex-lg-row">
-            <!--begin::Aside-->
-            <div class="d-flex flex-center w-lg-50 pt-15 pt-lg-0 px-10">
-                <!--begin::Aside Content-->
-                <div class="d-flex flex-center flex-lg-start flex-column text-lg-start w-100 text-center"
-                    style="max-width: 500px;">
-                    <!--begin::Title-->
-                    <h1 class="fw-bold mb-3 text-wrap text-white logo-font">{{ config('app.name') }}</h1>
-                    <!--end::Title-->
-
-                    <!--begin::Subtitle-->
-                    <h2 class="fw-normal fs-3 m-0 text-wrap text-white">
-                        {{ env('APP_DESCRIPTION', 'Default description') }}
-                    </h2>
-                    <!--end::Subtitle-->
-                </div>
-                <!--end::Aside Content-->
-            </div>
-            <!--end::Aside-->
-
-            <!--begin::Body-->
-
-            <div class="d-flex align-items-center justify-content-center p-lg-15 p-8"> <!--min-vh-100-->
-                <!--begin::Card-->
-                <div
-                    class="bg-body d-flex flex-column align-items-stretch flex-center rounded-4 w-md-600px p-lg-15 p-10 shadow">
-                    <!--begin::Wrapper-->
-                    <div class="d-flex flex-center flex-column flex-column-fluid px-lg-5 pb-lg-10 w-100 pb-8">
-                        @yield('content')
-                    </div>
-                    <!--end::Wrapper-->
-                </div>
-                <!--end::Card-->
-            </div>
-
-            <!--end::Body-->
+            @yield('content')
         </div>
         <!--end::Authentication - Sign-in-->
     </div>
