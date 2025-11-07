@@ -13,7 +13,7 @@
                 <div class="d-flex flex-center flex-lg-start flex-column text-lg-start w-100 text-center"
                     style="max-width: 500px;">
                     <!--begin::Title-->
-                    <h1 class="fw-bold mb-3 text-wrap text-white logo-font">{{ config('app.name') }}</h1>
+                    <h1 class="fw-bold mb-3 text-wrap text-white logo-font fs-3hx">{{ config('app.name') }}</h1>
                     <!--end::Title-->
 
                     <!--begin::Subtitle-->
