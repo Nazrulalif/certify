@@ -1,0 +1,93 @@
+version: '3.8'
+
+services:
+  # Nginx web server
+  web:
+    image: nginx:alpine
+    container_name: certify-web-dev
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8000}:80"
+    volumes:
+      - ./:/var/www
+      - ./docker/development/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - php-fpm
+    networks:
+      - certify-dev
+
+  # PHP-FPM service
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/development/php-fpm/Dockerfile
+    container_name: certify-php-fpm-dev
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www
+      - ./docker/development/php-fpm/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      - DB_CONNECTION=${DB_CONNECTION:-sqlite}
+      - DB_DATABASE=${DB_DATABASE:-/var/www/database/database.sqlite}
+      - APP_ENV=${APP_ENV:-local}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-false}
+      - AUTO_SEED=${AUTO_SEED:-false}
+    networks:
+      - certify-dev
+
+  # PostgreSQL (optional - uncomment to use)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: certify-postgres-dev
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${POSTGRES_PORT:-5432}:5432"
+  #   environment:
+  #     - POSTGRES_DB=${DB_DATABASE:-certify}
+  #     - POSTGRES_USER=${DB_USERNAME:-certify}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD:-secret}
+  #   volumes:
+  #     - postgres-data-dev:/var/lib/postgresql/data
+  #   networks:
+  #     - certify-dev
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-certify}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Redis (optional - for caching and queues)
+  redis:
+    image: redis:alpine
+    container_name: certify-redis-dev
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - certify-dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Node.js for Vite dev server
+  node:
+    image: node:20-alpine
+    container_name: certify-node-dev
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    ports:
+      - "${VITE_PORT:-5173}:5173"
+    command: sh -c "npm install && npm run dev -- --host"
+    networks:
+      - certify-dev
+
+networks:
+  certify-dev:
+    driver: bridge
+
+volumes:
+  postgres-data-dev:

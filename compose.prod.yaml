@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # Nginx web server
+  web:
+    build:
+      context: .
+      dockerfile: ./docker/production/nginx/Dockerfile
+    container_name: certify-web-prod
+    restart: unless-stopped
+    volumes:
+      - laravel-storage-production:/var/www/storage:ro
+    networks:
+      - certify-prod
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+
+  # PHP-FPM service
+  php-fpm:
+    build:
+      context: .
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: production
+    container_name: certify-php-fpm-prod
+    restart: unless-stopped
+    volumes:
+      - laravel-storage-production:/var/www/storage
+      # Mount SQLite database directory (if using SQLite)
+      - sqlite-data-production:/var/www/database
+    env_file:
+      - .env
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - AUTO_MIGRATE=${AUTO_MIGRATE:-false}
+      - AUTO_SEED=${AUTO_SEED:-false}
+    networks:
+      - certify-prod
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm-healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    # Uncomment below if using PostgreSQL
+    # depends_on:
+    #   postgres:
+    #     condition: service_healthy
+
+  # PostgreSQL (optional - uncomment to use instead of SQLite)
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: certify-postgres-prod
+  #   restart: unless-stopped
+  #   user: postgres
+  #   ports:
+  #     - "${POSTGRES_PORT:-5432}:5432"
+  #   environment:
+  #     - POSTGRES_DB=${DB_DATABASE:-certify}
+  #     - POSTGRES_USER=${DB_USERNAME:-certify}
+  #     - POSTGRES_PASSWORD=${DB_PASSWORD}
+  #   volumes:
+  #     - postgres-data-production:/var/lib/postgresql/data
+  #   networks:
+  #     - certify-prod
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-certify}"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Redis for caching and queue management
+  redis:
+    image: redis:alpine
+    container_name: certify-redis-prod
+    restart: unless-stopped
+    networks:
+      - certify-prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Queue worker (optional - for processing certificate generation jobs)
+  # queue-worker:
+  #   build:
+  #     context: .
+  #     dockerfile: ./docker/common/php-fpm/Dockerfile
+  #     target: production
+  #   container_name: certify-queue-worker-prod
+  #   restart: unless-stopped
+  #   volumes:
+  #     - laravel-storage-production:/var/www/storage
+  #     - sqlite-data-production:/var/www/database
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - APP_ENV=production
+  #   command: php artisan queue:work --tries=3 --timeout=300
+  #   depends_on:
+  #     php-fpm:
+  #       condition: service_healthy
+  #   networks:
+  #     - certify-prod
+
+networks:
+  certify-prod:
+    driver: bridge
+
+volumes:
+  laravel-storage-production:
+  sqlite-data-production:
+  postgres-data-production:

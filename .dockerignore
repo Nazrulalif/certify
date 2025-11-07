@@ -1,0 +1,84 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Node modules and build artifacts
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Laravel specific
+/storage/*.key
+/vendor
+.env
+.env.*
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+
+# Laravel storage symlink (problematic on Windows)
+public/storage
+public/hot
+public/build
+
+# Testing
+tests/
+phpunit.xml
+.phpunit.cache
+
+# Documentation
+*.md
+!README.md
+PHASE*.md
+PROJECT*.md
+USER-GUIDE*.md
+template-event-refactor.md
+
+# Test files
+test-*.php
+
+# Docker files (don't copy into container)
+docker-compose*.yml
+compose.*.yml
+compose.*.yaml
+Dockerfile
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and storage runtime files (will be initialized by entrypoint)
+*.log
+storage/app/public/*
+storage/app/private/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+storage/logs/*
+!storage/**/.gitignore
+!storage/**/.gitkeep
+
+# Database
+database/database.sqlite
+database/database.sqlite-shm
+database/database.sqlite-wal
+
+# Bootstrap cache
+bootstrap/cache/*
+!bootstrap/cache/.gitignore
+
+# Temporary files
+tmp/
+temp/
+*.tmp
