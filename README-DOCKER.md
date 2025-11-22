@@ -6,9 +6,9 @@ Complete Docker setup for Laravel Certificate Generator with SQLite (default) an
 
 ## 📋 Prerequisites
 
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- Git
+-   Docker Engine 20.10+
+-   Docker Compose 2.0+
+-   Git
 
 ---
 
@@ -64,45 +64,49 @@ docker compose -f compose.prod.yaml exec php-fpm php artisan storage:link
 SQLite is configured by default and requires no additional setup.
 
 **.env configuration:**
+
 ```env
 DB_CONNECTION=sqlite
 DB_DATABASE=/var/www/database/database.sqlite
 ```
 
 **Advantages:**
-- ✅ No external database server needed
-- ✅ Simple setup and deployment
-- ✅ Perfect for development and small deployments
-- ✅ Zero configuration required
+
+-   ✅ No external database server needed
+-   ✅ Simple setup and deployment
+-   ✅ Perfect for development and small deployments
+-   ✅ Zero configuration required
 
 ### Option 2: PostgreSQL (Optional)
 
 To use PostgreSQL instead of SQLite:
 
 **1. Uncomment PostgreSQL service in docker-compose.yml:**
+
 ```yaml
 postgres:
-  image: postgres:16-alpine
-  container_name: certify-postgres-dev
-  restart: unless-stopped
-  ports:
-    - "${POSTGRES_PORT:-5432}:5432"
-  environment:
-    - POSTGRES_DB=${DB_DATABASE:-certify}
-    - POSTGRES_USER=${DB_USERNAME:-certify}
-    - POSTGRES_PASSWORD=${DB_PASSWORD:-secret}
-  volumes:
-    - postgres-data-dev:/var/lib/postgresql/data
-  networks:
-    - certify-dev
-  healthcheck:
-    test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-certify}"]
-    interval: 10s
-    timeout: 5s
-    retries: 5
+    image: postgres:16-alpine
+    container_name: certify-postgres-dev
+    restart: unless-stopped
+    ports:
+        - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+        - POSTGRES_DB=${DB_DATABASE:-certify}
+        - POSTGRES_USER=${DB_USERNAME:-certify}
+        - POSTGRES_PASSWORD=${DB_PASSWORD:-secret}
+    volumes:
+        - postgres-data-dev:/var/lib/postgresql/data
+    networks:
+        - certify-dev
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-certify}"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 ```
 
 **2. Update .env file:**
+
 ```env
 DB_CONNECTION=pgsql
 DB_HOST=postgres
@@ -114,14 +118,16 @@ POSTGRES_PORT=5432
 ```
 
 **3. Update php-fpm depends_on (if using PostgreSQL):**
+
 ```yaml
 php-fpm:
-  depends_on:
-    postgres:
-      condition: service_healthy
+    depends_on:
+        postgres:
+            condition: service_healthy
 ```
 
 **4. Restart containers:**
+
 ```bash
 docker compose down
 docker compose up -d
@@ -134,23 +140,23 @@ docker compose exec php-fpm php artisan migrate --seed
 
 ### Development Stack
 
-| Service | Container Name | Port | Purpose |
-|---------|---------------|------|---------|
-| **web** | certify-web-dev | 8000 | Nginx web server |
-| **php-fpm** | certify-php-fpm-dev | 9000 | PHP-FPM with Laravel |
-| **redis** | certify-redis-dev | 6379 | Cache & queue driver |
-| **node** | certify-node-dev | 5173 | Vite dev server |
+| Service      | Container Name       | Port | Purpose               |
+| ------------ | -------------------- | ---- | --------------------- |
+| **web**      | certify-web-dev      | 8000 | Nginx web server      |
+| **php-fpm**  | certify-php-fpm-dev  | 9000 | PHP-FPM with Laravel  |
+| **redis**    | certify-redis-dev    | 6379 | Cache & queue driver  |
+| **node**     | certify-node-dev     | 5173 | Vite dev server       |
 | **postgres** | certify-postgres-dev | 5432 | PostgreSQL (optional) |
 
 ### Production Stack
 
-| Service | Container Name | Port | Purpose |
-|---------|---------------|------|---------|
-| **web** | certify-web-prod | 80 | Nginx (optimized) |
-| **php-fpm** | certify-php-fpm-prod | 9000 | PHP-FPM (production) |
-| **redis** | certify-redis-prod | 6379 | Cache & queues |
-| **postgres** | certify-postgres-prod | 5432 | PostgreSQL (optional) |
-| **queue-worker** | certify-queue-worker-prod | - | Queue worker (optional) |
+| Service          | Container Name            | Port | Purpose                 |
+| ---------------- | ------------------------- | ---- | ----------------------- |
+| **web**          | certify-web-prod          | 80   | Nginx (optimized)       |
+| **php-fpm**      | certify-php-fpm-prod      | 9000 | PHP-FPM (production)    |
+| **redis**        | certify-redis-prod        | 6379 | Cache & queues          |
+| **postgres**     | certify-postgres-prod     | 5432 | PostgreSQL (optional)   |
+| **queue-worker** | certify-queue-worker-prod | -    | Queue worker (optional) |
 
 ---
 
@@ -308,15 +314,15 @@ QUEUE_CONNECTION=redis
 
 ### Development
 
-- **Application Code**: `./ → /var/www` (live reload)
-- **SQLite Database**: `./database → /var/www/database`
-- **Node Modules**: Named volume for performance
+-   **Application Code**: `./ → /var/www` (live reload)
+-   **SQLite Database**: `./database → /var/www/database`
+-   **Node Modules**: Named volume for performance
 
 ### Production
 
-- **Storage**: `laravel-storage-production` (certificates, uploads)
-- **SQLite Database**: `sqlite-data-production` (if using SQLite)
-- **PostgreSQL Data**: `postgres-data-production` (if using PostgreSQL)
+-   **Storage**: `laravel-storage-production` (certificates, uploads)
+-   **SQLite Database**: `sqlite-data-production` (if using SQLite)
+-   **PostgreSQL Data**: `postgres-data-production` (if using PostgreSQL)
 
 ---
 
@@ -324,16 +330,16 @@ QUEUE_CONNECTION=redis
 
 ### Production Checklist
 
-- [ ] Set `APP_ENV=production`
-- [ ] Set `APP_DEBUG=false`
-- [ ] Generate secure `APP_KEY`
-- [ ] Use strong database passwords
-- [ ] Configure proper file permissions
-- [ ] Enable HTTPS with reverse proxy
-- [ ] Set up regular backups
-- [ ] Configure firewall rules
-- [ ] Use Redis for sessions/cache
-- [ ] Enable queue workers for async jobs
+-   [ ] Set `APP_ENV=production`
+-   [ ] Set `APP_DEBUG=false`
+-   [ ] Generate secure `APP_KEY`
+-   [ ] Use strong database passwords
+-   [ ] Configure proper file permissions
+-   [ ] Enable HTTPS with reverse proxy
+-   [ ] Set up regular backups
+-   [ ] Configure firewall rules
+-   [ ] Use Redis for sessions/cache
+-   [ ] Enable queue workers for async jobs
 
 ### File Permissions
 
@@ -358,6 +364,7 @@ docker compose exec php-fpm chmod -R 775 /var/www/storage
 ### Issue: Database Connection Failed
 
 **For SQLite:**
+
 ```bash
 # Check if database file exists
 docker compose exec php-fpm ls -la /var/www/database/
@@ -368,6 +375,7 @@ docker compose exec php-fpm chmod 664 /var/www/database/database.sqlite
 ```
 
 **For PostgreSQL:**
+
 ```bash
 # Check if PostgreSQL is running
 docker compose ps postgres
@@ -438,14 +446,14 @@ Add resource limits to `compose.prod.yaml`:
 
 ```yaml
 php-fpm:
-  deploy:
-    resources:
-      limits:
-        cpus: '1'
-        memory: 512M
-      reservations:
-        cpus: '0.5'
-        memory: 256M
+    deploy:
+        resources:
+            limits:
+                cpus: "1"
+                memory: 512M
+            reservations:
+                cpus: "0.5"
+                memory: 256M
 ```
 
 ---
@@ -475,6 +483,7 @@ docker compose exec postgres pg_dump -U certify certify | gzip > backup-$(date +
 ### Restore Database
 
 **SQLite:**
+
 ```bash
 # Copy backup file to container
 docker compose cp backup-20250107.sqlite certify-php-fpm-dev:/var/www/database/database.sqlite
@@ -484,6 +493,7 @@ docker compose exec php-fpm php artisan migrate --force
 ```
 
 **PostgreSQL:**
+
 ```bash
 # Restore from backup
 docker compose exec -T postgres psql -U certify certify < backup-20250107.sql
@@ -500,10 +510,10 @@ docker compose cp certify-php-fpm-dev:/var/www/storage/app/public ./storage-back
 
 ## 🔗 Useful Links
 
-- **Laravel Documentation**: https://laravel.com/docs
-- **Docker Documentation**: https://docs.docker.com
-- **PHP-FPM Health Check**: https://github.com/renatomefi/php-fpm-healthcheck
-- **Nginx Configuration**: https://nginx.org/en/docs/
+-   **Laravel Documentation**: https://laravel.com/docs
+-   **Docker Documentation**: https://docs.docker.com
+-   **PHP-FPM Health Check**: https://github.com/renatomefi/php-fpm-healthcheck
+-   **Nginx Configuration**: https://nginx.org/en/docs/
 
 ---
 
@@ -511,8 +521,8 @@ docker compose cp certify-php-fpm-dev:/var/www/storage/app/public ./storage-back
 
 ### Test Accounts
 
-- **Root**: root@certify.com / password
-- **User**: user@certify.com / password
+-   **Root**: root@certify.com / password
+-   **User**: user@certify.com / password
 
 ### Log Files
 
